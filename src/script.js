@@ -178,3 +178,79 @@ donut.forEach(d => {
 // Nota: Removemos a criação do <circle> central para deixar o fundo transparente
 donutEl.innerHTML = ''; // Limpa conteúdo anterior se houver
 donutEl.appendChild(svg);
+
+// ==========================================
+// MODAL NOVA DEMANDA
+// ==========================================
+
+const modal = document.getElementById('modalDemand');
+const btnNewDemand = document.getElementById('btnNewDemand');
+const btnCloseModal = document.getElementById('closeModal');
+const btnCancel = document.getElementById('btnCancel');
+const formDemand = document.getElementById('formDemand');
+
+// Abre o modal
+btnNewDemand.onclick = () => {
+    modal.classList.add('active');
+    document.body.style.overflow = 'hidden'; // Previne scroll do body
+};
+
+// Fecha o modal
+const closeModal = () => {
+    modal.classList.remove('active');
+    document.body.style.overflow = ''; // Restaura scroll
+    formDemand.reset(); // Limpa o formulário
+};
+
+btnCloseModal.onclick = closeModal;
+btnCancel.onclick = closeModal;
+
+// Fecha ao clicar no overlay
+modal.querySelector('.modal-overlay').onclick = closeModal;
+
+// Previne fechar ao clicar dentro do modal-content
+modal.querySelector('.modal-content').onclick = (e) => {
+    e.stopPropagation();
+};
+
+// Fecha com tecla ESC
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && modal.classList.contains('active')) {
+        closeModal();
+    }
+});
+
+// Submissão do formulário
+formDemand.onsubmit = (e) => {
+    e.preventDefault();
+    
+    // Coleta os dados do formulário
+    const formData = new FormData(formDemand);
+    const demandData = {
+        titulo: formData.get('titulo'),
+        tipo: formData.get('tipo'),
+        cliente: formData.get('cliente'),
+        orcamento: formData.get('orcamento'),
+        dataEntrega: formData.get('dataEntrega'),
+        prioridade: formData.get('prioridade'),
+        descricao: formData.get('descricao')
+    };
+    
+    console.log('Nova Demanda Criada:', demandData);
+    
+    // Aqui você pode adicionar lógica para:
+    // - Enviar para um backend
+    // - Salvar localmente
+    // - Adicionar à lista de demandas
+    
+    // Mostra mensagem de sucesso (simples)
+    alert(`✅ Demanda "${demandData.titulo}" criada com sucesso!`);
+    
+    // Fecha o modal
+    closeModal();
+};
+
+// Define data mínima como hoje para o input de data
+const dateInput = document.getElementById('dataEntrega');
+const today = new Date().toISOString().split('T')[0];
+dateInput.setAttribute('min', today);

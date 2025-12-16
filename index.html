@@ -4,11 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RSTI Final</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <!-- alo -->
+
     <aside id="sidebar">
         <div class="sidebar-header">
             <div class="logo">RSTI<span>Final</span></div>
@@ -38,7 +38,7 @@
             </div>
             <div class="actions">
                 <button id="theme">🌙</button>
-                <button class="btn-new">＋ Novo</button>
+                <button class="btn-new" id="btnNewDemand">＋ Novo</button>
             </div>
         </header>
 
@@ -92,7 +92,7 @@
                 </div>
 
                 <div class="card col-3">
-                    <div class="card-head" calss="good"><h3>Próximas Entregas</h3></div>
+                    <div class="card-head"><h3>Próximas Entregas</h3></div>
                     <div class="list">
                         <div class="item">
                             <div class="icon purple">IG</div>
@@ -141,26 +141,94 @@
         <section id="demandas" class="tab-content">
             <div class="card">
                 <h3>Gerenciar Demandas</h3>
-                <p style="margin-top:10px;color:var(--muted)">Conteúdo da aba demandas...</p>
+                <p style="margin-top:10px;color:var(--text-muted)">Conteúdo da aba demandas...</p>
             </div>
         </section>
 
         <section id="entregas" class="tab-content">
             <div class="card">
                 <h3>Histórico de Entregas</h3>
-                <p style="margin-top:10px;color:var(--muted)">Conteúdo da aba entregas...</p>
+                <p style="margin-top:10px;color:var(--text-muted)">Conteúdo da aba entregas...</p>
             </div>
         </section>
 
         <section id="config" class="tab-content">
             <div class="card">
                 <h3>Configurações do Sistema</h3>
-                <p style="margin-top:10px;color:var(--muted)">Preferências de usuário, notificações, etc.</p>
+                <p style="margin-top:10px;color:var(--text-muted)">Preferências de usuário, notificações, etc.</p>
             </div>
         </section>
 
     </main>
 
+<<<<<<< HEAD
     <script src="src/script.js"></script>
+=======
+    <!-- MODAL NOVA DEMANDA -->
+    <div id="modalDemand" class="modal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>✨ Nova Demanda</h2>
+                <button class="modal-close" id="closeModal">✕</button>
+            </div>
+            
+            <form id="formDemand" class="modal-body">
+                <div class="form-group">
+                    <label for="titulo">Título da Demanda *</label>
+                    <input type="text" id="titulo" name="titulo" placeholder="Ex: Criação de Post Instagram" required>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="tipo">Tipo de Serviço *</label>
+                        <select id="tipo" name="tipo" required>
+                            <option value="">Selecione...</option>
+                            <option value="social">📱 Social Media</option>
+                            <option value="design">🎨 Design</option>
+                            <option value="copy">✍️ Copywriting</option>
+                            <option value="video">🎥 Vídeo</option>
+                            <option value="seo">🔍 SEO</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="cliente">Cliente *</label>
+                        <select id="cliente" name="cliente" required>
+                            <option value="">Selecione...</option>
+                            <option value="empresa-a">Empresa A</option>
+                            <option value="empresa-b">Empresa B</option>
+                            <option value="empresa-c">Empresa C</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="orcamento">Orçamento (R$)</label>
+                        <input type="number" id="orcamento" name="orcamento" placeholder="0,00" step="0.01" min="0">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="dataEntrega">Data de Entrega *</label>
+                        <input type="date" id="dataEntrega" name="dataEntrega" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="descricao">Descrição</label>
+                    <textarea id="descricao" name="descricao" rows="4" placeholder="Descreva os detalhes da demanda..."></textarea>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn-cancel" id="btnCancel">Cancelar</button>
+                    <button type="submit" class="btn-submit">🚀 Criar Demanda</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+>>>>>>> 720fe94c0d74aacc6f0633f620f324c9a4b2dd93
 </body>
 </html>
