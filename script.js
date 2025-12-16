@@ -1,102 +1,111 @@
-// DADOS
-const barData = [
-    { L: 'Social', V: 14 }, { L: 'Design', V: 9 }, 
-    { L: 'Copy', V: 5 }, { L: 'Video', V: 3 }, { L: 'SEO', V: 2 }
-];
-const donutData = [
-    { L: 'Andamento', V: 12, C: 'var(--c1)' },
-    { L: 'Revisão', V: 5, C: 'var(--c3)' },
-    { L: 'Finalizado', V: 3, C: 'var(--c5)' },
-    { L: 'Cancelado', V: 1, C: 'var(--c4)' }
+// Dados
+const bars = [
+    { l: 'Social', v: 14 }, 
+    { l: 'Design', v: 9 }, 
+    { l: 'Copy', v: 5 }, 
+    { l: 'Video', v: 3 }, 
+    { l: 'SEO', v: 2 }
 ];
 
-// TEMA
-const btnTheme = document.getElementById('themeToggle');
-if(localStorage.getItem('theme') === 'light') document.body.classList.add('light');
+const donut = [
+    { l: 'Andamento', v: 12, c: 'var(--c1)' },
+    { l: 'Revisão', v: 5, c: 'var(--c3)' },
+    { l: 'Finalizado', v: 3, c: 'var(--c5)' },
+    { l: 'Cancelado', v: 1, c: 'var(--c4)' }
+];
+
+// Tema
+const btn = document.getElementById('theme');
+const body = document.body;
+
+if (localStorage.theme === 'light') body.classList.add('light');
 updateIcon();
 
-btnTheme.onclick = () => {
-    document.body.classList.toggle('light');
-    localStorage.setItem('theme', document.body.classList.contains('light') ? 'light' : 'dark');
+btn.onclick = () => {
+    body.classList.toggle('light');
+    localStorage.theme = body.classList.contains('light') ? 'light' : 'dark';
     updateIcon();
 };
 
 function updateIcon() {
-    btnTheme.innerText = document.body.classList.contains('light') ? '☀️' : '🌙';
+    btn.innerText = body.classList.contains('light') ? '☀️' : '🌙';
 }
 
-// RENDERIZAR
+// Renderizar
 document.addEventListener('DOMContentLoaded', () => {
-    // 1. Barras
-    const barC = document.getElementById('barChart');
-    const max = Math.max(...barData.map(d => d.V));
+    // Barras
+    const barEl = document.getElementById('bars');
+    const max = Math.max(...bars.map(d => d.v));
     
-    barData.forEach(d => {
-        const grp = document.createElement('div');
-        grp.className = 'bar-group';
+    bars.forEach(d => {
+        const g = document.createElement('div');
+        g.className = 'bar-group';
         
-        const bar = document.createElement('div');
-        bar.className = 'bar';
-        bar.style.height = '0%';
-        bar.setAttribute('data-val', d.V);
-        setTimeout(() => bar.style.height = (d.V/max)*100 + '%', 100);
+        const b = document.createElement('div');
+        b.className = 'bar';
+        b.style.height = '0%';
+        b.setAttribute('data-val', d.v);
+        setTimeout(() => b.style.height = (d.v / max * 100) + '%', 100);
 
-        const lbl = document.createElement('div');
-        lbl.className = 'lbl';
-        lbl.innerText = d.L;
+        const l = document.createElement('div');
+        l.className = 'lbl';
+        l.innerText = d.l;
 
-        grp.append(bar, lbl);
-        barC.appendChild(grp);
+        g.append(b, l);
+        barEl.appendChild(g);
     });
 
-    // 2. Rosca (SVG)
-    const donC = document.getElementById('donutChart');
-    const legC = document.getElementById('donutLegend');
-    const W = 100, H = 100, R = 50, hole = 35;
-    const ns = "http://www.w3.org/2000/svg";
+    // Rosca
+    const donutEl = document.getElementById('donut');
+    const legEl = document.getElementById('legend');
+    const w = 100, h = 100, r = 50, hole = 35;
+    const ns = 'http://www.w3.org/2000/svg';
     
-    const svg = document.createElementNS(ns, "svg");
-    svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+    const svg = document.createElementNS(ns, 'svg');
+    svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
     
-    const total = donutData.reduce((a,b) => a+b.V, 0);
+    const total = donut.reduce((a, b) => a + b.v, 0);
     let ang = 0;
 
-    donutData.forEach(d => {
-        const perc = d.V / total;
+    donut.forEach(d => {
+        const perc = d.v / total;
         const rad = perc * 2 * Math.PI;
-        const x1 = Math.cos(ang)*R, y1 = Math.sin(ang)*R;
-        const x2 = Math.cos(ang+rad)*R, y2 = Math.sin(ang+rad)*R;
-        const big = perc > .5 ? 1 : 0;
+        const x1 = Math.cos(ang) * r;
+        const y1 = Math.sin(ang) * r;
+        const x2 = Math.cos(ang + rad) * r;
+        const y2 = Math.sin(ang + rad) * r;
+        const big = perc > 0.5 ? 1 : 0;
         
-        const path = document.createElementNS(ns, "path");
-        path.setAttribute("d", `M0 0 L${x1} ${y1} A${R} ${R} 0 ${big} 1 ${x2} ${y2} Z`);
-        path.setAttribute("fill", d.C);
-        path.setAttribute("class", "slice");
+        const path = document.createElementNS(ns, 'path');
+        path.setAttribute('d', `M0 0 L${x1} ${y1} A${r} ${r} 0 ${big} 1 ${x2} ${y2} Z`);
+        path.setAttribute('fill', d.c);
         
-        // Tooltip simples nativo
-        const title = document.createElementNS(ns, "title");
-        title.textContent = `${d.L}: ${d.V}`;
+        const title = document.createElementNS(ns, 'title');
+        title.textContent = `${d.l}: ${d.v}`;
         path.appendChild(title);
 
-        const g = document.createElementNS(ns, "g");
-        g.setAttribute("transform", `translate(${W/2},${H/2})`);
+        const g = document.createElementNS(ns, 'g');
+        g.setAttribute('transform', `translate(${w/2},${h/2})`);
         g.appendChild(path);
         svg.appendChild(g);
         
         ang += rad;
 
         // Legenda
-        legC.innerHTML += `
+        legEl.innerHTML += `
             <div class="leg-item">
-                <span><span class="dot" style="background:${d.C}"></span>${d.L}</span>
-                <b>${d.V}</b>
+                <span><span class="dot" style="background:${d.c}"></span>${d.l}</span>
+                <b>${d.v}</b>
             </div>`;
     });
 
-    // Buraco
-    const c = document.createElementNS(ns, "circle");
-    c.setAttribute("cx", W/2); c.setAttribute("cy", H/2); c.setAttribute("r", hole);
-    c.setAttribute("fill", "var(--card)");
+    // Buraco central
+    const c = document.createElementNS(ns, 'circle');
+    c.setAttribute('cx', w/2);
+    c.setAttribute('cy', h/2);
+    c.setAttribute('r', hole);
+    c.setAttribute('fill', 'var(--card)');
     svg.appendChild(c);
-    donC.appendChild(svg);
+    
+    donutEl.appendChild(svg);
 });

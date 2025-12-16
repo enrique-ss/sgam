@@ -3,16 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dash Compacto</title>
-    <!-- Fonte Inter para visual limpo -->
+    <title>CRM Dashboard</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-    <!-- SIDEBAR -->
-    <aside class="fade-in">
-        <div class="logo">⚡ CRM<span style="color:var(--primary)">Lite</span></div>
+    <aside>
+        <div class="logo">⚡ CRM<span>Lite</span></div>
         <nav>
             <a href="#" class="active">📊 <span>Dash</span></a>
             <a href="#">👥 <span>Clientes</span></a>
@@ -29,19 +27,17 @@
         </div>
     </aside>
 
-    <!-- MAIN -->
     <main>
-        <header class="fade-down">
+        <header>
             <h1>Visão Geral</h1>
             <div class="actions">
-                <button id="themeToggle" title="Mudar Tema">🌙</button>
+                <button id="theme">🌙</button>
                 <button class="btn-new">＋ Nova</button>
             </div>
         </header>
 
-        <div class="grid fade-up">
+        <div class="grid">
             
-            <!-- MÉTRICAS -->
             <div class="card metric">
                 <div>
                     <h3>Ativos</h3>
@@ -49,6 +45,7 @@
                 </div>
                 <div class="trend up">↗ 12%</div>
             </div>
+            
             <div class="card metric">
                 <div>
                     <h3>Abertas</h3>
@@ -56,32 +53,31 @@
                 </div>
                 <div class="trend neutral">➡ 0%</div>
             </div>
+            
             <div class="card metric">
                 <div>
                     <h3>Atrasadas</h3>
-                    <div class="val text-danger">3</div>
+                    <div class="val danger">3</div>
                 </div>
                 <div class="trend down">↘ 2</div>
             </div>
 
-            <!-- LINHA PRINCIPAL: BARRAS + ROSCA -->
             <div class="card col-2">
                 <div class="card-head">
                     <h3>Demandas por Serviço</h3>
-                    <span class="more">⋮</span>
+                    <span>⋮</span>
                 </div>
-                <div id="barChart" class="chart-container bars"></div>
+                <div id="bars" class="bars"></div>
             </div>
 
             <div class="card">
                 <div class="card-head"><h3>Status Geral</h3></div>
-                <div class="donut-wrapper">
-                    <div id="donutChart" class="chart-container donut"></div>
-                    <div id="donutLegend" class="legend"></div>
+                <div class="donut-wrap">
+                    <div id="donut"></div>
+                    <div id="legend" class="legend"></div>
                 </div>
             </div>
 
-            <!-- LINHA INFERIOR: LISTAS -->
             <div class="card col-2">
                 <div class="card-head"><h3>Próximas Entregas</h3></div>
                 <div class="list">
@@ -105,12 +101,12 @@
             </div>
 
             <div class="card">
-                <div class="card-head"><h3 class="text-danger">Atenção</h3></div>
+                <div class="card-head"><h3 class="danger">Atenção</h3></div>
                 <div class="list">
                     <div class="item">
                         <div class="desc">
                             <b>Natal Campaign</b>
-                            <small class="text-danger">Atrasada há 5 dias</small>
+                            <small class="danger">Atrasada há 5 dias</small>
                         </div>
                         <span class="badge">URGENTE</span>
                     </div>
