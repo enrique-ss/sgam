@@ -4,12 +4,18 @@
 window.addEventListener('DOMContentLoaded', () => {
     let isLoggedIn = localStorage.getItem('isLoggedIn');
     let currentUser = JSON.parse(localStorage.getItem('currentUser'));
+    console.log(isLoggedIn, currentUser);
+    
+    console.log('ashjsahjash');
     
     if (!isLoggedIn || !currentUser) {
         // Mock login for demo purposes to avoid infinite redirect loop
-        currentUser = { name: 'Admin User' };
-        localStorage.setItem('isLoggedIn', 'true');
-        localStorage.setItem('currentUser', JSON.stringify(currentUser));
+        // currentUser = { name: 'Admin User' };
+        // localStorage.setItem('isLoggedIn', 'true');
+        // localStorage.setItem('currentUser', JSON.stringify(currentUser));
+        console.log('ajsdhajsahjk');
+        
+        window.location.href = 'index.html';
     }
     
     updateUserInfo(currentUser);
