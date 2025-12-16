@@ -1,3 +1,36 @@
+// ==========================================
+// VERIFICAR AUTENTICAÇÃO
+// ==========================================
+window.addEventListener('DOMContentLoaded', () => {
+    const isLoggedIn = localStorage.getItem('isLoggedIn');
+    const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+    
+    if (!isLoggedIn || !currentUser) {
+        // Redireciona para a página de login
+        window.location.href = 'index.html';
+        return;
+    }
+    
+    // Atualizar informações do usuário na interface
+    updateUserInfo(currentUser);
+});
+
+function updateUserInfo(user) {
+    // Atualizar avatar com iniciais
+    const avatar = document.querySelector('.avatar');
+    const initials = user.name
+        .split(' ')
+        .map(n => n[0])
+        .join('')
+        .toUpperCase()
+        .slice(0, 2);
+    avatar.textContent = initials;
+    
+    // Atualizar nome do usuário
+    const userName = document.querySelector('.info strong');
+    userName.textContent = user.name;
+}
+
 // Data
 const bars = [
     { l: 'Social', v: 13 }, 
@@ -254,3 +287,46 @@ formDemand.onsubmit = (e) => {
 const dateInput = document.getElementById('dataEntrega');
 const today = new Date().toISOString().split('T')[0];
 dateInput.setAttribute('min', today);
+
+// ==========================================
+// LOGOUT - Adicionar botão de logout
+// ==========================================
+
+// Criar botão de logout na sidebar (adicionar ao user-profile)
+const userProfile = document.querySelector('.user-profile');
+const logoutBtn = document.createElement('button');
+logoutBtn.className = 'btn-logout';
+logoutBtn.innerHTML = '🚪 Sair';
+logoutBtn.style.cssText = `
+    width: 100%;
+    margin-top: 12px;
+    padding: 10px;
+    background: rgba(244, 63, 94, 0.1);
+    border: 1px solid rgba(244, 63, 94, 0.3);
+    color: var(--danger);
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+`;
+
+logoutBtn.addEventListener('mouseenter', () => {
+    logoutBtn.style.background = 'rgba(244, 63, 94, 0.2)';
+    logoutBtn.style.transform = 'translateY(-2px)';
+});
+
+logoutBtn.addEventListener('mouseleave', () => {
+    logoutBtn.style.background = 'rgba(244, 63, 94, 0.1)';
+    logoutBtn.style.transform = 'translateY(0)';
+});
+
+logoutBtn.addEventListener('click', () => {
+    if (confirm('Deseja realmente sair?')) {
+        localStorage.removeItem('isLoggedIn');
+        localStorage.removeItem('currentUser');
+        window.location.href = 'index.html';
+    }
+});
+
+userProfile.appendChild(logoutBtn);
