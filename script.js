@@ -10,7 +10,7 @@ const bars = [
 const donut = [
     { l: 'Andamento', v: 12, c: 'var(--primary)' },
     { l: 'Atrasados', v: 3, c: 'var(--warn)' },
-    { l: 'Concluídos', v: 1, c: 'var(--success)' },
+    { l: 'Concluídos', v: 8, c: 'var(--success)' },
     { l: 'Cancelados', v: 1, c: 'var(--danger)' }
 ];
 

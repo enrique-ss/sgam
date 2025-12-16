@@ -138,6 +138,7 @@ aside.hidden ~ main .btn-toggle { display: block; }
 .trend { font-size: 0.8rem; padding: 4px 8px; border-radius: 6px; font-weight: 600; white-space: nowrap; }
 .trend.up { background: rgba(16, 185, 129, 0.15); color: var(--success); }
 .trend.neutral { background: var(--border); color: var(--muted); }
+.trend.down { background: rgba(239, 71, 111, 0.15); color: var(--danger); }
 
 /* --- CHARTS --- */
 .bars { display: flex; align-items: flex-end; justify-content: space-between; height: 180px; gap: 15px; }
