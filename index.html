@@ -3,312 +3,418 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RSTI Final</title>
+    <title>RSTI - Login</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css">
-<<<<<<< HEAD
-    <script type="importmap">
-    {
-      "imports": {
-        "react": "https://esm.sh/react@^19.2.3",
-        "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
-        "react/": "https://esm.sh/react@^19.2.3/",
-        "lucide-react": "https://esm.sh/lucide-react@^0.561.0",
-        "recharts": "https://esm.sh/recharts@^3.6.0"
-      }
-    }
-    </script>
-=======
->>>>>>> parent of c56ef64 (login funcional)
+    <style>
+        :root {
+            --bg-color: #030712;
+            --glass-card: rgba(17, 24, 39, 0.7);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --glass-shine: rgba(255, 255, 255, 0.03);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --primary: #6366f1;
+            --accent-gradient: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            --success: #10b981;
+            --danger: #f43f5e;
+            --shadow-soft: 0 10px 40px -10px rgba(0,0,0,0.5);
+            --shadow-glow: 0 0 20px rgba(99, 102, 241, 0.15);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(circle at 15% 50%, rgba(99, 102, 241, 0.15), transparent 25%), 
+                radial-gradient(circle at 85% 30%, rgba(139, 92, 246, 0.15), transparent 25%);
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .auth-container {
+            width: 100%;
+            max-width: 480px;
+            padding: 20px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .bg-decoration {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(99, 102, 241, 0.1) 0%, transparent 70%);
+            border-radius: 50%;
+            filter: blur(80px);
+            animation: pulse 8s ease-in-out infinite;
+            z-index: 0;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.5; }
+            50% { transform: translate(-50%, -50%) scale(1.2); opacity: 0.8; }
+        }
+
+        .auth-card {
+            background: var(--glass-card);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            padding: 40px;
+            box-shadow: var(--shadow-soft), var(--shadow-glow);
+            position: relative;
+            overflow: hidden;
+            animation: slideUp 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .auth-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(180deg, var(--glass-shine) 0%, transparent 100%);
+            pointer-events: none;
+        }
+
+        .auth-card.hidden { display: none; }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(40px) scale(0.95); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .auth-header {
+            text-align: center;
+            margin-bottom: 32px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .logo {
+            font-size: 2rem;
+            font-weight: 800;
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 16px;
+        }
+
+        .auth-header h2 {
+            font-size: 1.6rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .auth-header p {
+            font-size: 0.95rem;
+            color: var(--text-muted);
+        }
+
+        .auth-form {
+            position: relative;
+            z-index: 1;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.9rem;
+            font-weight: 600;
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 8px;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 14px 16px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            color: var(--text-main);
+            font-size: 0.95rem;
+            font-family: 'Inter', sans-serif;
+            transition: all 0.3s;
+            outline: none;
+        }
+
+        .form-group input:focus {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+
+        .form-options {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            font-size: 0.85rem;
+        }
+
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            color: var(--text-muted);
+        }
+
+        .link {
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .link:hover {
+            text-decoration: underline;
+        }
+
+        .btn-primary {
+            width: 100%;
+            padding: 16px;
+            background: var(--accent-gradient);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+        }
+
+        .btn-primary:hover {
+            filter: brightness(1.1);
+            transform: translateY(-2px);
+        }
+
+        .auth-footer {
+            text-align: center;
+            margin-top: 24px;
+            padding-top: 24px;
+            border-top: 1px solid var(--glass-border);
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+
+        .fade-out {
+            animation: fadeOut 0.3s ease-out forwards;
+        }
+
+        .fade-in {
+            animation: fadeIn 0.3s ease-out forwards;
+        }
+
+        @keyframes fadeOut {
+            from { opacity: 1; transform: translateY(0); }
+            to { opacity: 0; transform: translateY(-20px); }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @media (max-width: 480px) {
+            .auth-card { padding: 28px 24px; }
+            .form-options { flex-direction: column; align-items: flex-start; gap: 12px; }
+        }
+    </style>
 </head>
 <body>
-
-    <aside id="sidebar">
-        <div class="sidebar-header">
-            <div class="logo">RSTI<span>Final</span></div>
-            <button id="closeSidebar" class="btn-close">✕</button>
-<<<<<<< HEAD
-        </div>
-        <nav>
-            <a href="#" class="nav-link active" data-target="dash">📊 <span>Dash</span></a>
-            <a href="#" class="nav-link" data-target="clientes">👥 <span>Clientes</span></a>
-            <a href="#" class="nav-link" data-target="demandas">🔥 <span>Demandas</span></a>
-            <a href="#" class="nav-link" data-target="entregas">📦 <span>Entregas</span></a>
-            <a href="#" class="nav-link" data-target="config">⚙️ <span>Config</span></a>
-        </nav>
-        <div class="user-profile">
-            <div class="profile-info">
-                <div class="avatar">AD</div>
-                <div class="info">
-                    <strong>Admin</strong>
-                    <small>Online</small>
-                </div>
+    <div class="auth-container">
+        <div class="bg-decoration"></div>
+        
+        <!-- Login Card -->
+        <div class="auth-card" id="loginCard">
+            <div class="auth-header">
+                <div class="logo">RSTI Final</div>
+                <h2>Bem-vindo de volta! 👋</h2>
+                <p>Entre com suas credenciais para continuar</p>
             </div>
-            <!-- Logout button will be appended here by JS -->
-        </div>
-    </aside>
 
-    <main>
-        <header>
-            <div class="header-left">
-                <button id="toggleSidebar" class="btn-toggle">☰</button>
-                <h1 id="page-title">Visão Geral</h1>
-            </div>
-            <div class="actions">
-                <button id="theme">🌙</button>
-                <button class="btn-new" id="btnNewDemand">＋ Novo</button>
-            </div>
-        </header>
-
-=======
-        </div>
-        <nav>
-            <a href="#" class="nav-link active" data-target="dash">📊 <span>Dash</span></a>
-            <a href="#" class="nav-link" data-target="clientes">👥 <span>Clientes</span></a>
-            <a href="#" class="nav-link" data-target="demandas">🔥 <span>Demandas</span></a>
-            <a href="#" class="nav-link" data-target="entregas">📦 <span>Entregas</span></a>
-            <a href="#" class="nav-link" data-target="config">⚙️ <span>Config</span></a>
-        </nav>
-        <div class="user-profile">
-            <div class="avatar">AD</div>
-            <div class="info">
-                <strong>Admin</strong>
-                <small>Online</small>
-            </div>
-        </div>
-    </aside>
-
-    <main>
-        <header>
-            <div class="header-left">
-                <button id="toggleSidebar" class="btn-toggle">☰</button>
-                <h1 id="page-title" class="logo">Visão Geral</h1>
-            </div>
-            <div class="actions">
-                <button id="theme">🌙</button>
-                <button class="btn-new" id="btnNewDemand">＋ Novo</button>
-            </div>
-        </header>
-
->>>>>>> parent of c56ef64 (login funcional)
-        <section id="dash" class="tab-content active">
-            <div class="grid">
-                <div class="card metric">
-                    <div>
-                        <h3>Andamento</h3>
-                        <div class="val good">12</div>
-                    </div>
-                    <div class="trend up">↗ 12%</div>
-                </div>
-
-                <div class="card metric">
-                    <div>
-                        <h3>Atrasados</h3>
-                        <div class="val warning">3</div>
-                    </div>
-                    <div class="trend down">↘ 7%</div>
-                </div>
-
-                <div class="card metric">
-                    <div>
-                        <h3>Concluídos</h3>
-                        <div class="val success">8</div>
-                    </div>
-                    <div class="trend up">↗ 24%</div>
-                </div>
-
-                <div class="card metric">
-                    <div>
-                        <h3>Cancelados</h3>
-                        <div class="val danger">1</div>
-                    </div>
-                    <div class="trend neutral">➡ 0%</div>
-                </div>
-
-                <div class="card col-3">
-                    <div class="card-head">
-                        <h3>Demandas Ativas</h3>
-                    </div>
-<<<<<<< HEAD
-                    <div id="bars" class="bars">
-                        <!-- Bars generated via JS -->
-                    </div>
-=======
-                    <div id="bars" class="bars"></div>
->>>>>>> parent of c56ef64 (login funcional)
-                </div>
-
-                <div class="card col-2">
-                    <div class="card-head"><h3>Status Geral</h3></div>
-                    <div class="donut-wrap">
-<<<<<<< HEAD
-                        <div id="donut">
-                            <!-- Donut SVG generated via JS -->
-                        </div>
-                        <div id="legend" class="legend">
-                            <!-- Legend generated via JS -->
-                        </div>
-=======
-                        <div id="donut"></div>
-                        <div id="legend" class="legend"></div>
->>>>>>> parent of c56ef64 (login funcional)
-                    </div>
-                </div>
-
-                <div class="card col-3">
-                    <div class="card-head"><h3>Próximas Entregas</h3></div>
-                    <div class="list">
-                        <div class="item">
-                            <div class="icon purple">IG</div>
-                            <div class="desc">
-                                <b>Instagram Post</b>
-                                <small>31/04/26 • Social</small>
-                            </div>
-                            <div class="badge success">ATIVO</div>
-                        </div>
-                        <div class="item">
-                            <div class="icon blue">BN</div>
-                            <div class="desc">
-                                <b>Banner Site</b>
-                                <small>02/06/26 • Design</small>
-                            </div>
-                            <div class="badge success">ATIVO</div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="card col-2">
-                    <div class="card-head"><h3 class="danger">Atenção</h3></div>
-                    <div class="list">
-                        <div class="item">
-                            <div class="desc">
-                                <b>Natal Campaign</b>
-                                <small class="danger">Atrasada há 5 dias</small>
-                            </div>
-                            <span class="badge danger">URGENTE</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <section id="clientes" class="tab-content">
-            <div class="card">
-<<<<<<< HEAD
-                <h3>Meus Clientes</h3>
-                <div class="list" style="margin-top:20px;">
-                    <div class="item"><div class="icon purple">A</div><div class="desc"><b>Empresa A</b><small>Ativo</small></div></div>
-                    <div class="item"><div class="icon blue">B</div><div class="desc"><b>Empresa B</b><small>Inativo</small></div></div>
-                    <div class="item"><div class="icon purple">C</div><div class="desc"><b>Empresa C</b><small>Ativo</small></div></div>
-=======
-                <div class="list">
-                    <div class="item"><div class="desc"><b>Empresa A</b><small>Ativo</small></div></div>
-                    <div class="item"><div class="desc"><b>Empresa B</b><small>Inativo</small></div></div>
-                    <div class="item"><div class="desc"><b>Empresa C</b><small>Ativo</small></div></div>
->>>>>>> parent of c56ef64 (login funcional)
-                </div>
-            </div>
-        </section>
-
-        <section id="demandas" class="tab-content">
-            <div class="card">
-                <h3>Gerenciar Demandas</h3>
-<<<<<<< HEAD
-                <p style="margin-top:10px;color:var(--text-muted)">Lista completa de demandas aqui...</p>
-=======
-                <p style="margin-top:10px;color:var(--text-muted)">Conteúdo da aba demandas...</p>
->>>>>>> parent of c56ef64 (login funcional)
-            </div>
-        </section>
-
-        <section id="entregas" class="tab-content">
-            <div class="card">
-                <h3>Histórico de Entregas</h3>
-<<<<<<< HEAD
-                <p style="margin-top:10px;color:var(--text-muted)">Histórico completo...</p>
-=======
-                <p style="margin-top:10px;color:var(--text-muted)">Conteúdo da aba entregas...</p>
->>>>>>> parent of c56ef64 (login funcional)
-            </div>
-        </section>
-
-        <section id="config" class="tab-content">
-            <div class="card">
-                <h3>Configurações do Sistema</h3>
-                <p style="margin-top:10px;color:var(--text-muted)">Preferências de usuário, notificações, etc.</p>
-            </div>
-        </section>
-
-    </main>
-
-    <!-- MODAL NOVA DEMANDA -->
-    <div id="modalDemand" class="modal">
-        <div class="modal-overlay"></div>
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>✨ Nova Demanda</h2>
-                <button class="modal-close" id="closeModal">✕</button>
-            </div>
-            
-            <form id="formDemand" class="modal-body">
+            <form id="loginForm" class="auth-form">
                 <div class="form-group">
-                    <label for="titulo">Título da Demanda</label>
-                    <input type="text" id="titulo" name="titulo" placeholder="Ex: Criação de Post Instagram" required>
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="tipo">Tipo de Serviço</label>
-                        <select id="tipo" name="tipo" required>
-                            <option value="">Selecione...</option>
-                            <option value="social">📱 Social Media</option>
-                            <option value="design">🎨 Design</option>
-                            <option value="copy">✍️ Copywriting</option>
-                            <option value="video">🎥 Vídeo</option>
-                            <option value="seo">🔍 SEO</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="cliente">Cliente</label>
-                        <select id="cliente" name="cliente" required>
-                            <option value="">Selecione...</option>
-                            <option value="empresa-a">Empresa A</option>
-                            <option value="empresa-b">Empresa B</option>
-                            <option value="empresa-c">Empresa C</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="orcamento">Orçamento (R$)</label>
-                        <input type="number" id="orcamento" name="orcamento" placeholder="0,00" step="0.01" min="0">
-                    </div>
-
-                    <div class="form-group">
-                        <label for="dataEntrega">Data de Entrega</label>
-                        <input type="date" id="dataEntrega" name="dataEntrega" required>
-                    </div>
+                    <label for="loginEmail">E-mail</label>
+                    <input type="email" id="loginEmail" placeholder="seu@email.com" required>
                 </div>
 
                 <div class="form-group">
-                    <label for="descricao">Descrição</label>
-                    <textarea id="descricao" name="descricao" rows="4" placeholder="Descreva os detalhes da demanda..."></textarea>
+                    <label for="loginPassword">Senha</label>
+                    <input type="password" id="loginPassword" placeholder="••••••••" required>
                 </div>
 
-                <div class="modal-footer">
-                    <button type="button" class="btn-cancel" id="btnCancel">Cancelar</button>
-                    <button type="submit" class="btn-submit">🚀 Criar Demanda</button>
+                <div class="form-options">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="rememberMe">
+                        <span>Lembrar de mim</span>
+                    </label>
+                    <a href="#" class="link">Esqueceu a senha?</a>
                 </div>
+
+                <button type="submit" class="btn-primary">🚀 Entrar</button>
             </form>
+
+            <div class="auth-footer">
+                <p>Não tem uma conta? <a href="#" class="link" id="showSignup">Criar conta</a></p>
+            </div>
+        </div>
+
+        <!-- Signup Card -->
+        <div class="auth-card hidden" id="signupCard">
+            <div class="auth-header">
+                <div class="logo">RSTI Final</div>
+                <h2>Criar nova conta ✨</h2>
+                <p>Preencha os dados para começar</p>
+            </div>
+
+            <form id="signupForm" class="auth-form">
+                <div class="form-group">
+                    <label for="signupName">Nome completo</label>
+                    <input type="text" id="signupName" placeholder="João Silva" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="signupEmail">E-mail</label>
+                    <input type="email" id="signupEmail" placeholder="seu@email.com" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="signupPassword">Senha</label>
+                    <input type="password" id="signupPassword" placeholder="Mínimo 6 caracteres" required minlength="6">
+                </div>
+
+                <div class="form-group">
+                    <label for="signupConfirmPassword">Confirmar senha</label>
+                    <input type="password" id="signupConfirmPassword" placeholder="Digite a senha novamente" required minlength="6">
+                </div>
+
+                <button type="submit" class="btn-primary">✨ Criar Conta</button>
+            </form>
+
+            <div class="auth-footer">
+                <p>Já tem uma conta? <a href="#" class="link" id="showLogin">Fazer login</a></p>
+            </div>
         </div>
     </div>
 
-<<<<<<< HEAD
-    <script src="script.js"></script>
-=======
-    <script src="src/script.js"></script>
->>>>>>> parent of c56ef64 (login funcional)
+    <script>
+        const loginCard = document.getElementById('loginCard');
+        const signupCard = document.getElementById('signupCard');
+        const showSignupBtn = document.getElementById('showSignup');
+        const showLoginBtn = document.getElementById('showLogin');
+        const loginForm = document.getElementById('loginForm');
+        const signupForm = document.getElementById('signupForm');
+
+        // Verificar se já está logado
+        if (localStorage.getItem('isLoggedIn') === 'true') {
+            window.location.href = 'dashboard.html';
+        }
+
+        // Trocar entre Login e Cadastro
+        showSignupBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            switchCards(loginCard, signupCard);
+        });
+
+        showLoginBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            switchCards(signupCard, loginCard);
+        });
+
+        function switchCards(hideCard, showCard) {
+            hideCard.classList.add('fade-out');
+            setTimeout(() => {
+                hideCard.classList.add('hidden');
+                hideCard.classList.remove('fade-out');
+                showCard.classList.remove('hidden');
+                showCard.classList.add('fade-in');
+                setTimeout(() => showCard.classList.remove('fade-in'), 300);
+            }, 300);
+        }
+
+        // LOGIN
+        loginForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            const users = JSON.parse(localStorage.getItem('users') || '[]');
+            const user = users.find(u => u.email === email && u.password === password);
+            
+            if (user) {
+                localStorage.setItem('isLoggedIn', 'true');
+                localStorage.setItem('currentUser', JSON.stringify({ name: user.name, email: user.email }));
+                showToast('Login realizado com sucesso! 🎉', 'success');
+                setTimeout(() => window.location.href = 'dashboard.html', 1000);
+            } else {
+                showToast('E-mail ou senha incorretos! ❌', 'error');
+            }
+        });
+
+        // CADASTRO
+        signupForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const name = document.getElementById('signupName').value;
+            const email = document.getElementById('signupEmail').value;
+            const password = document.getElementById('signupPassword').value;
+            const confirmPassword = document.getElementById('signupConfirmPassword').value;
+            
+            if (password !== confirmPassword) {
+                showToast('As senhas não coincidem! ❌', 'error');
+                return;
+            }
+            
+            const users = JSON.parse(localStorage.getItem('users') || '[]');
+            
+            if (users.some(u => u.email === email)) {
+                showToast('Este e-mail já está cadastrado! ❌', 'error');
+                return;
+            }
+            
+            const newUser = { id: Date.now(), name, email, password };
+            users.push(newUser);
+            localStorage.setItem('users', JSON.stringify(users));
+            localStorage.setItem('isLoggedIn', 'true');
+            localStorage.setItem('currentUser', JSON.stringify({ name, email }));
+            showToast('Conta criada com sucesso! 🎉', 'success');
+            setTimeout(() => window.location.href = 'dashboard.html', 1000);
+        });
+
+        // Toast
+        function showToast(message, type) {
+            const toast = document.createElement('div');
+            Object.assign(toast.style, {
+                position: 'fixed', top: '20px', right: '20px', padding: '16px 24px',
+                borderRadius: '12px', fontWeight: '600', fontSize: '0.9rem', zIndex: '10000',
+                animation: 'slideIn 0.3s ease-out', boxShadow: '0 10px 30px rgba(0,0,0,0.3)',
+                backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.1)',
+                background: type === 'success' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(244, 63, 94, 0.2)',
+                color: type === 'success' ? '#10b981' : '#f43f5e',
+                borderColor: type === 'success' ? 'rgba(16, 185, 129, 0.4)' : 'rgba(244, 63, 94, 0.4)'
+            });
+            toast.textContent = message;
+            
+            const style = document.createElement('style');
+            style.textContent = '@keyframes slideIn { from { opacity: 0; transform: translateX(100px); } }';
+            document.head.appendChild(style);
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+    </script>
 </body>
 </html>
