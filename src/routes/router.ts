@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import { Router } from "express";
 import { criarUsuario } from "../controllers/usuario.controller";
 import { listarCliente } from "../controllers/cliente.controller";
@@ -15,3 +16,5 @@ router.get('/clientes', listarCliente);
 // demanda
 router.get('/demandas', listarDemandas);
 router.post('/demandas', criarDemandas);
+=======
+>>>>>>> parent of 06557ff (Merge branch 'main' of https://github.com/enrique-ss/rsti-final)

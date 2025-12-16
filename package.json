@@ -2,9 +2,8 @@
   "name": "rsti-final",
   "version": "1.0.0",
   "main": "index.js",
-  "type": "commonjs",
   "scripts": {
-    "dev": "npx tsx --watch src/index.ts"
+    "dev": "npx tsc --watch src/index.ts"
   },
   "repository": {
     "type": "git",
