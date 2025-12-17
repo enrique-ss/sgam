@@ -5,3 +5,9 @@ export const criarUsuario = async (req: any, res: any) => {
     const usuario = await db('usuario').insert({ nome, email, senha, telefone, nivel_acesso });
     return res.json(usuario);
 };
+
+
+export const listarCliente = async (req: any, res: any) => {
+    const cliente = await db('usuario').where('cliente');
+    return res.json;
+};
