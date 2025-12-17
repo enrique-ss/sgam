@@ -11,9 +11,7 @@ export const index = async (req: any, res: any) => {
  
 };
 
-export const create = async (req: any, res: any) => {
-  console.log(req.body);
-  
+export const create = async (req: any, res: any) => {  
   const [id] = await db('demandas').insert(req.body);
   return res.status(201).json({ id, mensagem: 'Demanda criada' });
 };
