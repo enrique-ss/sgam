@@ -1,11 +1,18 @@
-import knex from "knex";
+import knex from 'knex';
 
-export const db = knex({
-  client: "mysql2",
+const connection = knex({
+  client: 'mysql2',
   connection: {
-    host: "localhost",
-    user: "root",
-    password: "senacrs",
-    database: "rsti_final",
+    host: 'localhost',
+    port: 3306,
+    user: 'root',
+    password: 'senacrs',
+    database: 'rsti_final'
   },
+  pool: {
+    min: 2,
+    max: 10
+  }
 });
+
+export default connection;
