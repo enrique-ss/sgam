@@ -99,24 +99,31 @@ nav a.active::before {
 body.light nav a:hover, body.light nav a.active { color: var(--primary); }
 
 .user-profile { 
-    margin-top: auto; display: flex; flex-direction: column; gap: 12px; 
-    padding: 15px; background: transparent; border-radius: 12px;
-    border: none;
+    margin-top: auto; 
+    display: flex; 
+    flex-direction: column; 
+    gap: 12px; 
+    padding: 20px 5px; /* Ajustado para alinhar sem borda */
+    background: transparent; /* Transparente */
+    border: none; /* Sem borda */
 }
 
 .user-profile > div:first-child {
-    display: flex; gap: 12px; align-items: center; width: 100%;
+    display: flex; 
+    gap: 12px; 
+    align-items: center; 
+    width: 100%;
+    padding-left: 10px; /* Alinhamento visual com o menu */
 }
 
 .avatar { 
-    width: 42px; height: 42px; background: var(--accent-gradient); border-radius: 10px; 
+    width: 42px; height: 42px; background: var(--accent-gradient); border-radius: 20px; 
     display: flex; align-items: center; justify-content: center; font-size: 0.9rem; font-weight: bold; color: white;
     box-shadow: 0 4px 10px rgba(99, 102, 241, 0.3);
     flex-shrink: 0;
 }
-.info { display: flex; flex-direction: column; font-size: 0.85rem; flex: 1; }
-.info strong { font-weight: 600; }
-.info small { opacity: 0.6; font-size: 0.75rem; margin-top: 2px; }
+.info { display: flex; flex-direction: column; font-size: 0.85rem; }
+.info small { opacity: 0.6; }
 
 /* --- MAIN --- */
 main { flex: 1; padding: 40px; overflow-y: auto; width: 100%; perspective: 1000px; }
@@ -224,7 +231,17 @@ body.light .metric .val {
 .trend.down { background: rgba(244, 63, 94, 0.1); color: var(--danger); border: 1px solid rgba(244, 63, 94, 0.2); }
 
 /* --- CHARTS --- */
-.bars { display: flex; align-items: flex-end; justify-content: space-between; height: 200px; gap: 8px; z-index: 1; width: 100%; }
+.bars { 
+    display: flex; 
+    align-items: flex-end; 
+    justify-content: space-between; 
+    height: 220px; 
+    gap: 8px; 
+    z-index: 1; 
+    width: 100%; 
+    margin-top: 40px; /* Joga o gráfico para baixo */
+    padding-bottom: 10px;
+}
 .bar-group { flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%; justify-content: flex-end; }
 .bar { 
     width: 100%; max-width: 45px; border-radius: 8px 8px 0 0; 
@@ -372,7 +389,7 @@ path:hover { transform: scale(1.08); filter: drop-shadow(0 0 8px rgba(255,255,25
     .btn-toggle { display: block !important; }
     main { padding: 20px; height: auto; overflow: visible; }
     .grid { grid-template-columns: repeat(2, 1fr); }
-    .col-3, .col-2 { grid-column: span 1; }
+    .col-3, .col-2 { grid-column: span 2; } /* Ocupa largura total, empilhando verticalmente */
     .metric { padding: 20px; }
     .bars { height: 180px; }
     .donut-wrap { flex-direction: row; }
