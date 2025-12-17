@@ -1,21 +1,14 @@
 // ==========================================
-// VERIFICAR AUTENTICAÇÃO (MOCK)
+// VERIFICAR AUTENTICAÇÃO
 // ==========================================
 window.addEventListener('DOMContentLoaded', () => {
     let isLoggedIn = localStorage.getItem('isLoggedIn');
     let currentUser = JSON.parse(localStorage.getItem('currentUser'));
-    console.log(isLoggedIn, currentUser);
-    
-    console.log('ashjsahjash');
     
     if (!isLoggedIn || !currentUser) {
-        // Mock login for demo purposes to avoid infinite redirect loop
-        // currentUser = { name: 'Admin User' };
-        // localStorage.setItem('isLoggedIn', 'true');
-        // localStorage.setItem('currentUser', JSON.stringify(currentUser));
-        console.log('ajsdhajsahjk');
-        
-        window.location.href = 'index.html';
+        // CORREÇÃO: Caminho ajustado para ../login/index.html
+        window.location.href = '../login/index.html';
+        return; // Interrompe execução se não estiver logado
     }
     
     updateUserInfo(currentUser);
@@ -23,13 +16,15 @@ window.addEventListener('DOMContentLoaded', () => {
 
 function updateUserInfo(user) {
     const avatar = document.querySelector('.avatar');
-    const initials = user.name
-        .split(' ')
-        .map(n => n[0])
-        .join('')
-        .toUpperCase()
-        .slice(0, 2);
-    avatar.textContent = initials;
+    if (avatar && user.name) {
+        const initials = user.name
+            .split(' ')
+            .map(n => n[0])
+            .join('')
+            .toUpperCase()
+            .slice(0, 2);
+        avatar.textContent = initials;
+    }
     
     const userName = document.querySelector('.info strong');
     if(userName) userName.textContent = user.name;
@@ -302,7 +297,8 @@ if(userProfile) {
         if (confirm('Deseja realmente sair?')) {
             localStorage.removeItem('isLoggedIn');
             localStorage.removeItem('currentUser');
-            window.location.reload();
+            // CORREÇÃO: Redirecionar diretamente em vez de reload, ou confiar no check do DOMContentLoaded
+            window.location.href = '../login/index.html';
         }
     });
 

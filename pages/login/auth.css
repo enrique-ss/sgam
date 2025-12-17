@@ -1,20 +1,16 @@
-/* --- AUTH PAGE STYLES --- */
+/* === AUTH PAGE STYLES === */
 :root {
     --bg-color: #030712;
     --glass-card: rgba(17, 24, 39, 0.7);
     --glass-border: rgba(255, 255, 255, 0.08);
     --glass-shine: rgba(255, 255, 255, 0.03);
-    
     --text-main: #f8fafc;
     --text-muted: #94a3b8;
-    
     --primary: #6366f1;
     --primary-glow: rgba(99, 102, 241, 0.5);
     --accent-gradient: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-    
     --success: #10b981;
     --danger: #f43f5e;
-    
     --shadow-soft: 0 10px 40px -10px rgba(0,0,0,0.5);
     --shadow-glow: 0 0 20px rgba(99, 102, 241, 0.15);
 }
@@ -39,7 +35,7 @@ body {
     overflow-x: hidden;
 }
 
-/* --- CONTAINER --- */
+/* === CONTAINER === */
 .auth-container {
     width: 100%;
     max-width: 480px;
@@ -65,11 +61,17 @@ body {
 }
 
 @keyframes pulse {
-    0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.5; }
-    50% { transform: translate(-50%, -50%) scale(1.2); opacity: 0.8; }
+    0%, 100% { 
+        transform: translate(-50%, -50%) scale(1); 
+        opacity: 0.5; 
+    }
+    50% { 
+        transform: translate(-50%, -50%) scale(1.2); 
+        opacity: 0.8; 
+    }
 }
 
-/* --- AUTH CARD --- */
+/* === AUTH CARD === */
 .auth-card {
     background: var(--glass-card);
     backdrop-filter: blur(20px);
@@ -109,7 +111,7 @@ body {
     }
 }
 
-/* --- HEADER --- */
+/* === HEADER === */
 .auth-header {
     text-align: center;
     margin-bottom: 32px;
@@ -120,9 +122,6 @@ body {
 .logo {
     font-size: 2rem;
     font-weight: 800;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
     background: var(--accent-gradient);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
@@ -142,7 +141,7 @@ body {
     color: var(--text-muted);
 }
 
-/* --- FORM --- */
+/* === FORM === */
 .auth-form {
     position: relative;
     z-index: 1;
@@ -187,7 +186,7 @@ body {
     opacity: 0.6;
 }
 
-/* --- FORM OPTIONS --- */
+/* === FORM OPTIONS === */
 .form-options {
     display: flex;
     justify-content: space-between;
@@ -223,7 +222,7 @@ body {
     text-decoration: underline;
 }
 
-/* --- BUTTON --- */
+/* === BUTTON === */
 .btn-primary {
     width: 100%;
     padding: 16px;
@@ -250,7 +249,7 @@ body {
     transform: translateY(0);
 }
 
-/* --- FOOTER --- */
+/* === FOOTER === */
 .auth-footer {
     text-align: center;
     margin-top: 24px;
@@ -262,32 +261,7 @@ body {
     z-index: 1;
 }
 
-/* --- RESPONSIVIDADE --- */
-@media (max-width: 480px) {
-    .auth-container {
-        padding: 16px;
-    }
-
-    .auth-card {
-        padding: 28px 24px;
-    }
-
-    .logo {
-        font-size: 1.6rem;
-    }
-
-    .auth-header h2 {
-        font-size: 1.4rem;
-    }
-
-    .form-options {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 12px;
-    }
-}
-
-/* --- ANIMAÇÃO DE TROCA DE CARDS --- */
+/* === ANIMAÇÕES DE TROCA === */
 .fade-out {
     animation: fadeOut 0.3s ease-out forwards;
 }
@@ -315,5 +289,30 @@ body {
     to {
         opacity: 1;
         transform: translateY(0);
+    }
+}
+
+/* === RESPONSIVIDADE === */
+@media (max-width: 480px) {
+    .auth-container {
+        padding: 16px;
+    }
+
+    .auth-card {
+        padding: 28px 24px;
+    }
+
+    .logo {
+        font-size: 1.6rem;
+    }
+
+    .auth-header h2 {
+        font-size: 1.4rem;
+    }
+
+    .form-options {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
     }
 }

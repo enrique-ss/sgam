@@ -1,4 +1,6 @@
-// Elementos
+// ==========================================
+// ELEMENTOS DO DOM
+// ==========================================
 const loginCard = document.getElementById('loginCard');
 const signupCard = document.getElementById('signupCard');
 const showSignupBtn = document.getElementById('showSignup');
@@ -6,18 +8,29 @@ const showLoginBtn = document.getElementById('showLogin');
 const loginForm = document.getElementById('loginForm');
 const signupForm = document.getElementById('signupForm');
 
-// Verificar se já está logado
+// ==========================================
+// VERIFICAR SE JÁ ESTÁ LOGADO
+// ==========================================
 window.addEventListener('DOMContentLoaded', () => {
     const isLoggedIn = localStorage.getItem('isLoggedIn');
     const currentUser = localStorage.getItem('currentUser');
     
+    // CORREÇÃO: Caminho ajustado para ../principal/dashboard.html
     if (isLoggedIn === 'true' && currentUser) {
-        // Redireciona para o dashboard
-        window.location.href = 'dashboard.html';
+        window.location.href = '../principal/dashboard.html';
+    }
+    
+    // Lembrar usuário
+    const rememberedEmail = localStorage.getItem('rememberUser');
+    if (rememberedEmail) {
+        document.getElementById('loginEmail').value = rememberedEmail;
+        document.getElementById('rememberMe').checked = true;
     }
 });
 
-// Trocar entre Login e Cadastro
+// ==========================================
+// TROCAR ENTRE LOGIN E CADASTRO
+// ==========================================
 showSignupBtn.addEventListener('click', (e) => {
     e.preventDefault();
     switchCards(loginCard, signupCard);
@@ -70,19 +83,22 @@ loginForm.addEventListener('submit', (e) => {
         
         if (rememberMe) {
             localStorage.setItem('rememberUser', email);
+        } else {
+            localStorage.removeItem('rememberUser');
         }
         
         // Animação de sucesso
-        showSuccessMessage('Login realizado com sucesso! 🎉');
+        showToast('Login realizado com sucesso! 🎉', 'success');
         
         // Redireciona após 1 segundo
+        // CORREÇÃO: Caminho ajustado para ../principal/dashboard.html
         setTimeout(() => {
-            window.location.href = 'dashboard.html';
+            window.location.href = '../principal/dashboard.html';
         }, 1000);
         
     } else {
         // Credenciais inválidas
-        showErrorMessage('E-mail ou senha incorretos! ❌');
+        showToast('E-mail ou senha incorretos! ❌', 'error');
     }
 });
 
@@ -99,7 +115,13 @@ signupForm.addEventListener('submit', (e) => {
     
     // Validar senhas
     if (password !== confirmPassword) {
-        showErrorMessage('As senhas não coincidem! ❌');
+        showToast('As senhas não coincidem! ❌', 'error');
+        return;
+    }
+    
+    // Validar tamanho da senha
+    if (password.length < 6) {
+        showToast('A senha deve ter no mínimo 6 caracteres! ❌', 'error');
         return;
     }
     
@@ -108,7 +130,7 @@ signupForm.addEventListener('submit', (e) => {
     
     // Verificar se e-mail já existe
     if (users.some(u => u.email === email)) {
-        showErrorMessage('Este e-mail já está cadastrado! ❌');
+        showToast('Este e-mail já está cadastrado! ❌', 'error');
         return;
     }
     
@@ -133,38 +155,28 @@ signupForm.addEventListener('submit', (e) => {
     }));
     
     // Animação de sucesso
-    showSuccessMessage('Conta criada com sucesso! 🎉');
+    showToast('Conta criada com sucesso! 🎉', 'success');
     
     // Redireciona após 1 segundo
+    // CORREÇÃO: Caminho ajustado para ../principal/dashboard.html
     setTimeout(() => {
-        window.location.href = 'dashboard.html';
+        window.location.href = '../principal/dashboard.html';
     }, 1000);
 });
 
 // ==========================================
-// MENSAGENS DE FEEDBACK
+// TOAST NOTIFICATIONS
 // ==========================================
-function showSuccessMessage(message) {
-    showToast(message, 'success');
-}
-
-function showErrorMessage(message) {
-    showToast(message, 'error');
-}
-
 function showToast(message, type) {
-    // Remove toast anterior se existir
     const existingToast = document.querySelector('.toast');
     if (existingToast) {
         existingToast.remove();
     }
     
-    // Criar toast
     const toast = document.createElement('div');
     toast.className = `toast toast-${type}`;
     toast.textContent = message;
     
-    // Estilos inline
     Object.assign(toast.style, {
         position: 'fixed',
         top: '20px',
@@ -190,48 +202,26 @@ function showToast(message, type) {
         toast.style.borderColor = 'rgba(244, 63, 94, 0.4)';
     }
     
-    // Adicionar animação
-    const style = document.createElement('style');
-    style.textContent = `
-        @keyframes slideInRight {
-            from {
-                opacity: 0;
-                transform: translateX(100px);
+    if (!document.querySelector('#toast-animations')) {
+        const style = document.createElement('style');
+        style.id = 'toast-animations';
+        style.textContent = `
+            @keyframes slideInRight {
+                from { opacity: 0; transform: translateX(100px); }
+                to { opacity: 1; transform: translateX(0); }
             }
-            to {
-                opacity: 1;
-                transform: translateX(0);
+            @keyframes slideOutRight {
+                from { opacity: 1; transform: translateX(0); }
+                to { opacity: 0; transform: translateX(100px); }
             }
-        }
-        @keyframes slideOutRight {
-            from {
-                opacity: 1;
-                transform: translateX(0);
-            }
-            to {
-                opacity: 0;
-                transform: translateX(100px);
-            }
-        }
-    `;
-    document.head.appendChild(style);
+        `;
+        document.head.appendChild(style);
+    }
     
     document.body.appendChild(toast);
     
-    // Remover após 3 segundos
     setTimeout(() => {
         toast.style.animation = 'slideOutRight 0.3s ease-out';
         setTimeout(() => toast.remove(), 300);
     }, 3000);
 }
-
-// ==========================================
-// LEMBRAR USUÁRIO
-// ==========================================
-window.addEventListener('DOMContentLoaded', () => {
-    const rememberedEmail = localStorage.getItem('rememberUser');
-    if (rememberedEmail) {
-        document.getElementById('loginEmail').value = rememberedEmail;
-        document.getElementById('rememberMe').checked = true;
-    }
-});
