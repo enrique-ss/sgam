@@ -306,7 +306,21 @@ path:hover { transform: scale(1.08); filter: drop-shadow(0 0 8px rgba(255,255,25
 }
 .badge.success { background: rgba(16, 185, 129, 0.15); color: var(--success); border: 1px solid rgba(16, 185, 129, 0.3); }
 .badge.danger { background: rgba(244, 63, 94, 0.15); color: var(--danger); border: 1px solid rgba(244, 63, 94, 0.3); }
+.badge.warning { background: rgba(251, 191, 36, 0.15); color: var(--warn); border: 1px solid rgba(251, 191, 36, 0.3); }
 .danger { color: var(--danger); }
+
+/* --- DEMANDAS SECTION --- */
+#demandas .card { min-height: auto; }
+#demandas .list { margin-top: 10px; }
+#demandas .item { min-height: 70px; }
+#demandas .icon { 
+    background: var(--accent-gradient); 
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3); 
+}
+#demandas .icon.blue { 
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); 
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3); 
+}
 
 /* --- MODAL --- */
 .modal {
