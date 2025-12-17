@@ -7,12 +7,9 @@ export const router = Router();
 
 // usuario
 router.post('/criar-usuario', criarUsuario);
-router.get('/listar-clientes', listarCliente);
-
-// tipo_servico
-
+router.get('/listar-cliente', listarCliente);
 
 
 // demanda
-router.get('/demandas', listarDemandas);
 router.post('/demandas', criarDemandas);
+router.get('/demandas', listarDemandas);

@@ -1,3 +1,4 @@
+DROP DATABASE IF EXISTS rsti_final;
 CREATE DATABASE rsti_final;
 USE rsti_final;
 
