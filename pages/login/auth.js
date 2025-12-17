@@ -9,37 +9,53 @@ const loginForm = document.getElementById('loginForm');
 const signupForm = document.getElementById('signupForm');
 
 // ==========================================
-// VERIFICAR SE JÁ ESTÁ LOGADO
+// VERIFICAR SE JÁ ESTÁ LOGADO (COM PROTEÇÃO ANTI-LOOP)
 // ==========================================
 window.addEventListener('DOMContentLoaded', () => {
     const isLoggedIn = localStorage.getItem('isLoggedIn');
-    const currentUser = localStorage.getItem('currentUser');
+    const currentUserRaw = localStorage.getItem('currentUser');
     
-    // CORREÇÃO: Caminho ajustado para ../principal/dashboard.html
-    if (isLoggedIn === 'true' && currentUser) {
-        window.location.href = '../principal/dashboard.html';
+    // Só redireciona se tiver o flag E conseguir ler o usuário corretamente
+    if (isLoggedIn === 'true' && currentUserRaw) {
+        try {
+            const user = JSON.parse(currentUserRaw);
+            // Verifica se o objeto usuário tem conteúdo válido antes de redirecionar
+            if (user && user.email) {
+                window.location.href = '../principal/dashboard.html';
+                return;
+            }
+        } catch (e) {
+            console.error("Dados de usuário corrompidos no login. Limpando...");
+            localStorage.clear(); // Limpa tudo para permitir novo login limpo
+        }
     }
     
-    // Lembrar usuário
+    // Lembrar usuário (apenas preenche o campo, não loga automático)
     const rememberedEmail = localStorage.getItem('rememberUser');
     if (rememberedEmail) {
-        document.getElementById('loginEmail').value = rememberedEmail;
-        document.getElementById('rememberMe').checked = true;
+        const emailInput = document.getElementById('loginEmail');
+        const rememberInput = document.getElementById('rememberMe');
+        if(emailInput) emailInput.value = rememberedEmail;
+        if(rememberInput) rememberInput.checked = true;
     }
 });
 
 // ==========================================
 // TROCAR ENTRE LOGIN E CADASTRO
 // ==========================================
-showSignupBtn.addEventListener('click', (e) => {
-    e.preventDefault();
-    switchCards(loginCard, signupCard);
-});
+if(showSignupBtn) {
+    showSignupBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        switchCards(loginCard, signupCard);
+    });
+}
 
-showLoginBtn.addEventListener('click', (e) => {
-    e.preventDefault();
-    switchCards(signupCard, loginCard);
-});
+if(showLoginBtn) {
+    showLoginBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        switchCards(signupCard, loginCard);
+    });
+}
 
 function switchCards(hideCard, showCard) {
     hideCard.classList.add('fade-out');
@@ -60,109 +76,110 @@ function switchCards(hideCard, showCard) {
 // ==========================================
 // LOGIN
 // ==========================================
-loginForm.addEventListener('submit', (e) => {
-    e.preventDefault();
-    
-    const email = document.getElementById('loginEmail').value;
-    const password = document.getElementById('loginPassword').value;
-    const rememberMe = document.getElementById('rememberMe').checked;
-    
-    // Buscar usuários cadastrados
-    const users = JSON.parse(localStorage.getItem('users') || '[]');
-    
-    // Verificar credenciais
-    const user = users.find(u => u.email === email && u.password === password);
-    
-    if (user) {
-        // Login bem-sucedido
-        localStorage.setItem('isLoggedIn', 'true');
-        localStorage.setItem('currentUser', JSON.stringify({
-            name: user.name,
-            email: user.email
-        }));
+if(loginForm) {
+    loginForm.addEventListener('submit', (e) => {
+        e.preventDefault();
         
-        if (rememberMe) {
-            localStorage.setItem('rememberUser', email);
+        const email = document.getElementById('loginEmail').value;
+        const password = document.getElementById('loginPassword').value;
+        const rememberMe = document.getElementById('rememberMe').checked;
+        
+        // Buscar usuários cadastrados
+        const users = JSON.parse(localStorage.getItem('users') || '[]');
+        
+        // Verificar credenciais (ou admin hardcoded para testes)
+        const user = users.find(u => u.email === email && u.password === password);
+        
+        // Lógica de Admin Mock (opcional, para testes rápidos)
+        const isAdminMock = (email === 'admin@admin.com' && password === 'admin');
+
+        if (user || isAdminMock) {
+            const userData = user || { name: 'Administrador', email: email, level: 'admin' };
+
+            // Login bem-sucedido
+            localStorage.setItem('isLoggedIn', 'true');
+            localStorage.setItem('currentUser', JSON.stringify(userData));
+            
+            if (rememberMe) {
+                localStorage.setItem('rememberUser', email);
+            } else {
+                localStorage.removeItem('rememberUser');
+            }
+            
+            // Animação de sucesso
+            showToast('Login realizado com sucesso! 🎉', 'success');
+            
+            // Redireciona
+            setTimeout(() => {
+                window.location.href = '../principal/dashboard.html';
+            }, 1000);
+            
         } else {
-            localStorage.removeItem('rememberUser');
+            // Credenciais inválidas
+            showToast('E-mail ou senha incorretos! ❌', 'error');
         }
-        
-        // Animação de sucesso
-        showToast('Login realizado com sucesso! 🎉', 'success');
-        
-        // Redireciona após 1 segundo
-        // CORREÇÃO: Caminho ajustado para ../principal/dashboard.html
-        setTimeout(() => {
-            window.location.href = '../principal/dashboard.html';
-        }, 1000);
-        
-    } else {
-        // Credenciais inválidas
-        showToast('E-mail ou senha incorretos! ❌', 'error');
-    }
-});
+    });
+}
 
 // ==========================================
 // CADASTRO
 // ==========================================
-signupForm.addEventListener('submit', (e) => {
-    e.preventDefault();
-    
-    const name = document.getElementById('signupName').value;
-    const email = document.getElementById('signupEmail').value;
-    const password = document.getElementById('signupPassword').value;
-    const confirmPassword = document.getElementById('signupConfirmPassword').value;
-    
-    // Validar senhas
-    if (password !== confirmPassword) {
-        showToast('As senhas não coincidem! ❌', 'error');
-        return;
-    }
-    
-    // Validar tamanho da senha
-    if (password.length < 6) {
-        showToast('A senha deve ter no mínimo 6 caracteres! ❌', 'error');
-        return;
-    }
-    
-    // Buscar usuários existentes
-    const users = JSON.parse(localStorage.getItem('users') || '[]');
-    
-    // Verificar se e-mail já existe
-    if (users.some(u => u.email === email)) {
-        showToast('Este e-mail já está cadastrado! ❌', 'error');
-        return;
-    }
-    
-    // Criar novo usuário
-    const newUser = {
-        id: Date.now(),
-        name: name,
-        email: email,
-        password: password,
-        createdAt: new Date().toISOString()
-    };
-    
-    // Salvar usuário
-    users.push(newUser);
-    localStorage.setItem('users', JSON.stringify(users));
-    
-    // Fazer login automático
-    localStorage.setItem('isLoggedIn', 'true');
-    localStorage.setItem('currentUser', JSON.stringify({
-        name: newUser.name,
-        email: newUser.email
-    }));
-    
-    // Animação de sucesso
-    showToast('Conta criada com sucesso! 🎉', 'success');
-    
-    // Redireciona após 1 segundo
-    // CORREÇÃO: Caminho ajustado para ../principal/dashboard.html
-    setTimeout(() => {
-        window.location.href = '../principal/dashboard.html';
-    }, 1000);
-});
+if(signupForm) {
+    signupForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        
+        const name = document.getElementById('signupName').value;
+        const email = document.getElementById('signupEmail').value;
+        const password = document.getElementById('signupPassword').value;
+        const confirmPassword = document.getElementById('signupConfirmPassword').value;
+        
+        // Validar senhas
+        if (password !== confirmPassword) {
+            showToast('As senhas não coincidem! ❌', 'error');
+            return;
+        }
+        
+        // Validar tamanho da senha
+        if (password.length < 6) {
+            showToast('A senha deve ter no mínimo 6 caracteres! ❌', 'error');
+            return;
+        }
+        
+        // Buscar usuários existentes
+        const users = JSON.parse(localStorage.getItem('users') || '[]');
+        
+        // Verificar se e-mail já existe
+        if (users.some(u => u.email === email)) {
+            showToast('Este e-mail já está cadastrado! ❌', 'error');
+            return;
+        }
+        
+        // Criar novo usuário
+        const newUser = {
+            id: Date.now(),
+            name: name,
+            email: email,
+            password: password,
+            createdAt: new Date().toISOString()
+        };
+        
+        // Salvar usuário
+        users.push(newUser);
+        localStorage.setItem('users', JSON.stringify(users));
+        
+        // Fazer login automático
+        localStorage.setItem('isLoggedIn', 'true');
+        localStorage.setItem('currentUser', JSON.stringify(newUser));
+        
+        // Animação de sucesso
+        showToast('Conta criada com sucesso! 🎉', 'success');
+        
+        // Redireciona
+        setTimeout(() => {
+            window.location.href = '../principal/dashboard.html';
+        }, 1000);
+    });
+}
 
 // ==========================================
 // TOAST NOTIFICATIONS
