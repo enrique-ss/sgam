@@ -1,5 +1,5 @@
 const PERMS = {
-    admin: { tabs: ['dash', 'clientes', 'demandas', 'entregas', 'config'], create: true, edit: true, manage: true, approve: true },
+    admin: { tabs: ['clientes', 'demandas', 'entregas', 'config'], create: true, edit: true, manage: true, approve: true },
     colaborador: { tabs: ['dash', 'demandas', 'entregas', 'config'], create: true, edit: false, manage: false, approve: true },
     cliente: { tabs: ['dash', 'demandas', 'entregas', 'config'], create: false, edit: false, manage: false, approve: false }
 };
