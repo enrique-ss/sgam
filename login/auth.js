@@ -177,7 +177,7 @@ if(signupForm) {
         showToast('Conta criada com sucesso! 🎉', 'success');
         
         setTimeout(() => {
-            window.location.href = '../principal/dashboard.html';
+            window.location.href = '../index.html';
         }, 1000);
     });
 }
