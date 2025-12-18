@@ -119,7 +119,7 @@ if(loginForm) {
             showToast(`Bem-vindo, ${user.name}! (${user.level}) 🚀`, 'success');
             
             setTimeout(() => {
-                window.location.href = '../principal/dashboard.html';
+                window.location.href = '../index.html';
             }, 1000);
             
         } else {
