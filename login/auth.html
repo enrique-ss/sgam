@@ -4,94 +4,72 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SGAM - Login</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="auth.css">
-<script type="importmap">
-{
-  "imports": {
-    "react": "https://esm.sh/react@^19.2.3",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
-    "react/": "https://esm.sh/react@^19.2.3/",
-    "lucide-react": "https://esm.sh/lucide-react@^0.561.0",
-    "recharts": "https://esm.sh/recharts@^3.6.0"
-  }
-}
-</script>
 </head>
 <body>
-    <div class="auth-container">
-        <div class="bg-decoration"></div>
-        
-        <!-- Login Card -->
-        <div class="auth-card" id="loginCard">
-            <div class="auth-header">
-                <div class="logo">SGAM</div>
-                <h2>Bem-vindo de volta! 👋</h2>
-                <p>Entre com suas credenciais para continuar</p>
+    <div class="container" id="loginCard">
+        <div class="logo">SGAM</div>
+        <h2>Bem-vindo de volta! 👋</h2>
+        <p class="subtitle">Entre com suas credenciais</p>
+
+        <form id="loginForm">
+            <div class="form-group">
+                <label>E-mail</label>
+                <input type="email" id="loginEmail" placeholder="seu@email.com" required>
             </div>
 
-            <form id="loginForm" class="auth-form">
-                <div class="form-group">
-                    <label for="loginEmail">E-mail</label>
-                    <input type="email" id="loginEmail" placeholder="seu@email.com" required>
-                </div>
-
-                <div class="form-group">
-                    <label for="loginPassword">Senha</label>
-                    <input type="password" id="loginPassword" placeholder="••••••••" required>
-                </div>
-
-                <div class="form-options">
-                    <label class="checkbox-label">
-                        <input type="checkbox" id="rememberMe">
-                        <span>Lembrar de mim</span>
-                    </label>
-                    <a href="#" class="link">Esqueceu a senha?</a>
-                </div>
-
-                <button type="submit" class="btn-primary">🚀 Entrar</button>
-            </form>
-
-            <div class="auth-footer">
-                <p>Não tem uma conta? <a href="#" class="link" id="showSignup">Criar conta</a></p>
+            <div class="form-group">
+                <label>Senha</label>
+                <input type="password" id="loginPassword" placeholder="••••••••" required>
             </div>
+
+            <div class="form-options">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="rememberMe">
+                    <span>Lembrar de mim</span>
+                </label>
+                <a href="#" class="link">Esqueceu a senha?</a>
+            </div>
+
+            <button type="submit" class="btn">Entrar</button>
+        </form>
+
+        <div class="footer">
+            <p>Não tem conta? <a href="#" class="link" id="showSignup">Criar conta</a></p>
         </div>
+    </div>
 
-        <!-- Signup Card -->
-        <div class="auth-card hidden" id="signupCard">
-            <div class="auth-header">
-                <div class="logo">SGAM</div>
-                <h2>Criar nova conta ✨</h2>
-                <p>Preencha os dados para começar</p>
+    <div class="container hidden" id="signupCard">
+        <div class="logo">SGAM</div>
+        <h2>Criar nova conta ✨</h2>
+        <p class="subtitle">Preencha os dados para começar</p>
+
+        <form id="signupForm">
+            <div class="form-group">
+                <label>Nome completo</label>
+                <input type="text" id="signupName" placeholder="João Silva" required>
             </div>
 
-            <form id="signupForm" class="auth-form">
-                <div class="form-group">
-                    <label for="signupName">Nome completo</label>
-                    <input type="text" id="signupName" placeholder="João Silva" required>
-                </div>
-
-                <div class="form-group">
-                    <label for="signupEmail">E-mail</label>
-                    <input type="email" id="signupEmail" placeholder="seu@email.com" required>
-                </div>
-
-                <div class="form-group">
-                    <label for="signupPassword">Senha</label>
-                    <input type="password" id="signupPassword" placeholder="Mínimo 6 caracteres" required minlength="6">
-                </div>
-
-                <div class="form-group">
-                    <label for="signupConfirmPassword">Confirmar senha</label>
-                    <input type="password" id="signupConfirmPassword" placeholder="Digite a senha novamente" required minlength="6">
-                </div>
-
-                <button type="submit" class="btn-primary">✨ Criar Conta</button>
-            </form>
-
-            <div class="auth-footer">
-                <p>Já tem uma conta? <a href="#" class="link" id="showLogin">Fazer login</a></p>
+            <div class="form-group">
+                <label>E-mail</label>
+                <input type="email" id="signupEmail" placeholder="seu@email.com" required>
             </div>
+
+            <div class="form-group">
+                <label>Senha</label>
+                <input type="password" id="signupPassword" placeholder="Mínimo 6 caracteres" required>
+            </div>
+
+            <div class="form-group">
+                <label>Confirmar senha</label>
+                <input type="password" id="signupConfirmPassword" placeholder="Digite novamente" required>
+            </div>
+
+            <button type="submit" class="btn">Criar Conta</button>
+        </form>
+
+        <div class="footer">
+            <p>Já tem conta? <a href="#" class="link" id="showLogin">Fazer login</a></p>
         </div>
     </div>
 
