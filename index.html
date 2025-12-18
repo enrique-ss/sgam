@@ -3,14 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RSTI Final - Dashboard</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <title>SGAM - Sistema de Gestão</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <aside id="sidebar">
         <div class="sidebar-header">
-            <div class="logo">RSTI<span>Final</span></div>
+            <div class="logo">SGAM</div>
             <button id="closeSidebar" class="btn-close">✕</button>
         </div>
         <nav id="mainNav"></nav>
@@ -18,7 +17,7 @@
             <div>
                 <div class="avatar">U</div>
                 <div class="info">
-                    <strong id="userName">Usuário</strong>
+                    <strong>Usuário</strong>
                 </div>
             </div>
         </div>
@@ -32,7 +31,7 @@
             </div>
             <div class="actions">
                 <button id="theme">🌙</button>
-                <button class="btn-new" id="btnNewDemand">＋ Novo</button>
+                <button class="btn-new" id="btnNewDemand">+ Novo</button>
             </div>
         </header>
 
@@ -135,7 +134,7 @@
                 <div class="card col-4" id="adminSection">
                     <div class="card-head">
                         <h3>👥 Gerenciar Usuários</h3>
-                        <button class="btn-new-small">＋ Novo Usuário</button>
+                        <button class="btn-new-small">+ Novo Usuário</button>
                     </div>
                     <div class="users-table" id="usersTable"></div>
                 </div>
@@ -153,12 +152,12 @@
             </div>
             <form id="formDemand" class="modal-body">
                 <div class="form-group">
-                    <label for="titulo">Título da Demanda</label>
+                    <label>Título da Demanda</label>
                     <input type="text" id="titulo" name="titulo" placeholder="Ex: Criação de Post Instagram" required>
                 </div>
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="tipo">Tipo de Serviço</label>
+                        <label>Tipo de Serviço</label>
                         <select id="tipo" name="tipo" required>
                             <option value="">Selecione...</option>
                             <option value="social">Social Media</option>
@@ -169,7 +168,7 @@
                         </select>
                     </div>
                     <div class="form-group">
-                        <label for="cliente">Cliente</label>
+                        <label>Cliente</label>
                         <select id="cliente" name="cliente" required>
                             <option value="">Selecione...</option>
                             <option value="empresa-a">Empresa A</option>
@@ -180,21 +179,21 @@
                 </div>
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="orcamento">Orçamento (R$)</label>
+                        <label>Orçamento (R$)</label>
                         <input type="number" id="orcamento" name="orcamento" placeholder="0,00" step="0.01" min="0">
                     </div>
                     <div class="form-group">
-                        <label for="dataEntrega">Data de Entrega</label>
+                        <label>Data de Entrega</label>
                         <input type="date" id="dataEntrega" name="dataEntrega" required>
                     </div>
                 </div>
                 <div class="form-group">
-                    <label for="descricao">Descrição</label>
-                    <textarea id="descricao" name="descricao" rows="4" placeholder="Descreva os detalhes da demanda..."></textarea>
+                    <label>Descrição</label>
+                    <textarea id="descricao" name="descricao" rows="4" placeholder="Descreva os detalhes..."></textarea>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn-cancel" id="btnCancel">Cancelar</button>
-                    <button type="submit" class="btn-submit">🚀 Criar Demanda</button>
+                    <button type="submit" class="btn-submit">Criar Demanda</button>
                 </div>
             </form>
         </div>
