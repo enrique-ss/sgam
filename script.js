@@ -539,10 +539,13 @@ function initModal() {
             e.preventDefault();
             const name = document.getElementById('userName').value;
             const email = document.getElementById('userEmail').value;
-            const role = document.getElementById('userRole').value;
             
-            if (!name || !email || !role) {
-                showToast('❌ Preencha todos os campos', 'danger');
+            // Captura o valor do select, mas define um fallback
+            const roleField = document.getElementById('userRole');
+            const role = roleField ? roleField.value : 'cliente'; // Fallback para cliente
+            
+            if (!name || !email) {
+                showToast('❌ Preencha os campos obrigatórios', 'danger');
                 return;
             }
             
@@ -550,7 +553,7 @@ function initModal() {
                 id: Date.now(),
                 name: name,
                 email: email,
-                role: role,
+                role: role || 'cliente', // Garante que seja cliente se role for null/undefined
                 active: true
             });
             

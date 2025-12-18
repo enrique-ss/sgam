@@ -119,7 +119,7 @@ signupForm.addEventListener('submit', (e) => {
         name: name,
         email: email,
         password: password,
-        level: 'admin',
+        level: 'cliente',
         createdAt: new Date().toISOString()
     };
     
