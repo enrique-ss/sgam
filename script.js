@@ -324,7 +324,7 @@ function render() {
                             <button class="btn-cancel-demand" onclick="cancelDemand(${d.id})" title="Cancelar">✕</button>
                         </div>
                     ` : ''}
-                    <span class="badge ${d.status === 'ATRASADO' ? 'danger' : 'success'}">${d.status}</span>
+                    <span class="badge ${d.status === 'ATRASADO' ? 'warning' : 'success'}">${d.status}</span>
                 </div>
             `;
         }).join('');
