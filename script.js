@@ -389,36 +389,54 @@ function render() {
             <div class="config-item"><label>Cargo</label><input type="text" value="${user.level}" disabled class="config-input"></div>
         `;
     }
+
+    window.toggleUserStatus = function(userId) {
+    const userToToggle = DATA.users.find(u => u.id === userId);
+    if (!userToToggle) return;
+    
+    const newStatus = userToToggle.active ? 'inativo' : 'ativo';
+    
+    if (confirm(`Deseja alterar status para "${newStatus.toUpperCase()}"?`)) {
+        userToToggle.active = !userToToggle.active;
+        showToast(`✅ Status alterado para ${newStatus.toUpperCase()}!`, 'success');
+        render();
+    }
+};
     
     // Usuários
-    const usersTable = document.getElementById('usersTable');
-    if (usersTable && p.manage) {
-        usersTable.innerHTML = `
-            <div class="table-header">
-                <div class="td">Nome</div>
-                <div class="td">Email</div>
-                <div class="td">Cargo</div>
-                <div class="td">Status</div>
-            </div>
-            ${DATA.users.map(u => `
-                <div class="table-row">
-                    <div class="td"><b>${u.name}</b></div>
-                    <div class="td">${u.email}</div>
-                    <div class="td">
-                        <select class="cargo-select" onchange="changeUserRole(${u.id}, this.value)">
-                            <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>Admin</option>
-                            <option value="colaborador" ${u.role === 'colaborador' ? 'selected' : ''}>Colaborador</option>
-                            <option value="cliente" ${u.role === 'cliente' ? 'selected' : ''}>Cliente</option>
-                        </select>
-                    </div>
-                    <div class="td">
-                        <span class="badge ${u.active ? 'success' : 'danger'}">${u.active ? 'ATIVO' : 'INATIVO'}</span>
-                    </div>
+const usersTable = document.getElementById('usersTable');
+if (usersTable && p.manage) {
+    usersTable.innerHTML = `
+        <div class="table-header">
+            <div class="td">Nome</div>
+            <div class="td">Email</div>
+            <div class="td">Cargo</div>
+            <div class="td">Status</div>
+        </div>
+        ${DATA.users.map(u => `
+            <div class="table-row">
+                <div class="td"><b>${u.name}</b></div>
+                <div class="td">${u.email}</div>
+                <div class="td">
+                    <select class="cargo-select" onchange="changeUserRole(${u.id}, this.value)">
+                        <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>Admin</option>
+                        <option value="colaborador" ${u.role === 'colaborador' ? 'selected' : ''}>Colaborador</option>
+                        <option value="cliente" ${u.role === 'cliente' ? 'selected' : ''}>Cliente</option>
+                    </select>
                 </div>
-            `).join('')}
-        `;
-    }
+                <div class="td">
+                    <span class="badge ${u.active ? 'success' : 'danger'}" 
+                          onclick="toggleUserStatus(${u.id})" 
+                          style="cursor: pointer; user-select: none;"
+                          title="Clique para alterar status">
+                        ${u.active ? 'ATIVO' : 'INATIVO'}
+                    </span>
+                </div>
+            </div>
+        `).join('')}
+    `;
 }
+};
 
 window.completeDemand = function(id) {
     const demand = DATA.demands.find(d => d.id === id);
