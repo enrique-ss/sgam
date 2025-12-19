@@ -29,22 +29,22 @@ const DATA = {
         { name: 'Restaurante Sabor', email: 'gerencia@sabor.com.br', active: true }
     ],
     demands: [
-    { id: 1, title: 'Campanha Instagram - Pet Paradise', type: 'Social Media', desc: 'Posts para feed e stories promocionais do lançamento', client: 'Pet Paradise', budget: 800, delivery: '10/12/25', status: 'EM ANDAMENTO' },
-    { id: 2, title: 'Identidade Visual Completa', type: 'Design Gráfico', desc: 'Criação de logo, cartões e papelaria', client: 'FitLife Academia', budget: 3500, delivery: '12/12/25', status: 'EM ANDAMENTO' },
-    { id: 3, title: 'Textos para Site Institucional', type: 'Copywriting', desc: 'Copy para todas as páginas do novo site', client: 'Moda Bella', budget: 1200, delivery: '15/12/25', status: 'EM ANDAMENTO' },
-    { id: 4, title: 'Ebook Nutrição para Pets', type: 'Produção de Conteúdo', desc: 'Ebook com 30 páginas sobre alimentação animal', client: 'Pet Paradise', budget: 2500, delivery: '18/12/25', status: 'EM ANDAMENTO' },
-    { id: 5, title: 'Relatório Mensal de Performance', type: 'Relatórios e Estratégia', desc: 'Análise completa de métricas e KPIs', client: 'TechSolutions', budget: 1800, delivery: '20/12/25', status: 'EM ANDAMENTO' },
-    { id: 6, title: 'Posts Redes Sociais - Dezembro', type: 'Social Media', desc: 'Calendário editorial completo para dezembro', client: 'Café Aroma', budget: 950, delivery: '22/12/25', status: 'EM ANDAMENTO' },
-    { id: 7, title: 'Banner Black Friday', type: 'Social Media', desc: 'Banners para site e redes sociais', client: 'Moda Bella', budget: 600, delivery: '28/11/25', status: 'ATRASADO' },
-    { id: 8, title: 'Planejamento Estratégico 2026', type: 'Relatórios e Estratégia', desc: 'Documento estratégico para próximo ano', client: 'Restaurante Sabor', budget: 4000, delivery: '05/12/25', status: 'ATRASADO' }
-],
+        { id: 1, title: 'Campanha Instagram - Pet Paradise', type: 'Social Media', desc: 'Posts para feed e stories promocionais do lançamento', client: 'Pet Paradise', budget: 800, delivery: '10/12/25', status: 'EM ANDAMENTO' },
+        { id: 2, title: 'Identidade Visual Completa', type: 'Design Gráfico', desc: 'Criação de logo, cartões e papelaria', client: 'FitLife Academia', budget: 3500, delivery: '12/12/25', status: 'EM ANDAMENTO' },
+        { id: 3, title: 'Textos para Site Institucional', type: 'Copywriting', desc: 'Copy para todas as páginas do novo site', client: 'Moda Bella', budget: 1200, delivery: '15/12/25', status: 'EM ANDAMENTO' },
+        { id: 4, title: 'Ebook Nutrição para Pets', type: 'Produção de Conteúdo', desc: 'Ebook com 30 páginas sobre alimentação animal', client: 'Pet Paradise', budget: 2500, delivery: '18/12/25', status: 'EM ANDAMENTO' },
+        { id: 5, title: 'Relatório Mensal de Performance', type: 'Relatórios e Estratégia', desc: 'Análise completa de métricas e KPIs', client: 'TechSolutions', budget: 1800, delivery: '20/12/25', status: 'EM ANDAMENTO' },
+        { id: 6, title: 'Posts Redes Sociais - Dezembro', type: 'Social Media', desc: 'Calendário editorial completo para dezembro', client: 'Café Aroma', budget: 950, delivery: '22/12/25', status: 'EM ANDAMENTO' },
+        { id: 7, title: 'Banner Black Friday', type: 'Social Media', desc: 'Banners para site e redes sociais', client: 'Moda Bella', budget: 600, delivery: '28/11/25', status: 'ATRASADO' },
+        { id: 8, title: 'Planejamento Estratégico 2026', type: 'Relatórios e Estratégia', desc: 'Documento estratégico para próximo ano', client: 'Restaurante Sabor', budget: 4000, delivery: '05/12/25', status: 'ATRASADO' }
+    ],
     deliveries: [
-    { id: 101, title: 'Logo Redesign Completo', type: 'Design Gráfico', client: 'Pet Paradise', budget: 1500, delivered: '15/11/25', status: 'CONCLUÍDO' },
-    { id: 102, title: 'Conteúdo Blog - 10 Artigos', type: 'Produção de Conteúdo', client: 'FitLife Academia', budget: 2000, delivered: '20/11/25', status: 'CONCLUÍDO' },
-    { id: 103, title: 'Campanha Lançamento Produto', type: 'Social Media', client: 'Café Aroma', budget: 850, delivered: '01/12/25', status: 'CONCLUÍDO' },
-    { id: 104, title: 'E-commerce SEO Avançado', type: 'Relatórios e Estratégia', client: 'Moda Bella', budget: 5000, delivered: '05/12/25', status: 'CANCELADO' },
-    { id: 105, title: 'Rebranding Completo', type: 'Design Gráfico', client: 'TechSolutions', budget: 4500, delivered: '30/09/25', status: 'CANCELADO' }
-],
+        { id: 101, title: 'Logo Redesign Completo', type: 'Design Gráfico', client: 'Pet Paradise', budget: 1500, delivered: '15/11/25', status: 'CONCLUÍDO' },
+        { id: 102, title: 'Conteúdo Blog - 10 Artigos', type: 'Produção de Conteúdo', client: 'FitLife Academia', budget: 2000, delivered: '20/11/25', status: 'CONCLUÍDO' },
+        { id: 103, title: 'Campanha Lançamento Produto', type: 'Social Media', client: 'Café Aroma', budget: 850, delivered: '01/12/25', status: 'CONCLUÍDO' },
+        { id: 104, title: 'E-commerce SEO Avançado', type: 'Relatórios e Estratégia', client: 'Moda Bella', budget: 5000, delivered: '05/12/25', status: 'CANCELADO' },
+        { id: 105, title: 'Rebranding Completo', type: 'Design Gráfico', client: 'TechSolutions', budget: 4500, delivered: '30/09/25', status: 'CANCELADO' }
+    ],
     users: [
         { id: 1, name: 'João Silva', email: 'joao.silva@sgam.com', role: 'admin', active: true },
         { id: 2, name: 'Maria Santos', email: 'maria.santos@sgam.com', role: 'colaborador', active: true },
@@ -90,17 +90,27 @@ function buildMenu() {
     const nav = document.getElementById('mainNav');
     const p = PERMS[user.level] || PERMS.cliente;
     
-    MENU.forEach((m, i) => {
+    let firstTab = null;
+    let isFirst = true;
+    
+    MENU.forEach((m) => {
         if (!p.tabs.includes(m.id)) return;
+        
+        if (!firstTab) firstTab = m.id;
         
         const a = document.createElement('a');
         a.href = '#';
-        a.className = i === 0 ? 'nav-link active' : 'nav-link';
+        a.className = isFirst ? 'nav-link active' : 'nav-link';
         a.setAttribute('data-target', m.id);
         a.innerHTML = `${m.icon} <span>${m.label}</span>`;
         a.onclick = (e) => { e.preventDefault(); switchTab(m.id); };
         nav.appendChild(a);
+        
+        isFirst = false;
     });
+    
+    // Redireciona para a primeira aba permitida
+    if (firstTab) switchTab(firstTab);
 }
 
 function switchTab(id) {
@@ -539,10 +549,8 @@ function initModal() {
             e.preventDefault();
             const name = document.getElementById('userName').value;
             const email = document.getElementById('userEmail').value;
-            
-            // Captura o valor do select, mas define um fallback
             const roleField = document.getElementById('userRole');
-            const role = roleField ? roleField.value : 'cliente'; // Fallback para cliente
+            const role = roleField ? roleField.value : 'cliente';
             
             if (!name || !email) {
                 showToast('❌ Preencha os campos obrigatórios', 'danger');
@@ -553,7 +561,7 @@ function initModal() {
                 id: Date.now(),
                 name: name,
                 email: email,
-                role: role || 'cliente', // Garante que seja cliente se role for null/undefined
+                role: role || 'cliente',
                 active: true
             });
             
