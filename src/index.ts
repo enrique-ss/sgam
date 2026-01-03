@@ -15,15 +15,18 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
+// Registrar rotas
 app.use('/api/auth', routerAuth);
 app.use('/api/usuarios', routerUsuario);
 app.use('/api/pedidos', routerPedido);
 app.use('/api/dashboard', routerDashboard);
 
+// Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'SGAM Online!' });
 });
 
+// Rota raiz
 app.get('/', (req, res) => {
   res.json({
     mensagem: 'SGAM - Sistema de Gerenciamento para Agências de Marketing',
@@ -31,10 +34,12 @@ app.get('/', (req, res) => {
   });
 });
 
+// 404
 app.use((req, res) => {
   res.status(404).json({ erro: 'Rota não encontrada' });
 });
 
+// Iniciar servidor
 const startServer = async () => {
   try {
     await db.raw('SELECT 1');

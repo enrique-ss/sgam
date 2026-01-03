@@ -23,13 +23,13 @@ export const PedidoController = {
                 query = query.where('pedidos.cliente_id', usuarioLogado.id);
             }
 
-            // Filtro por status
+            // Filtro por status (aceita múltiplos separados por vírgula)
             if (status) {
                 const statusArray = (status as string).split(',');
                 query = query.whereIn('pedidos.status', statusArray);
             }
 
-            // Filtro por responsável (usado no CLI para "minhas demandas")
+            // Filtro por responsável (para minhas demandas)
             if (responsavel_id) {
                 query = query.where('pedidos.responsavel_id', responsavel_id as string);
             }
@@ -70,7 +70,7 @@ export const PedidoController = {
             // REGRA: Cliente só vê seus próprios pedidos
             if (usuarioLogado.nivel_acesso === 'cliente' &&
                 pedido.cliente_id !== usuarioLogado.id) {
-                return res.status(403).json({ erro: 'Sem permissão para ver este pedido' });
+                return res.status(403).json({ erro: 'Sem permissão' });
             }
 
             const demandas = await db('demandas')
@@ -99,16 +99,14 @@ export const PedidoController = {
         try {
             let clienteIdFinal = usuarioLogado.id;
 
-            // REGRA: Admin/Colaborador não cria pedidos para si, apenas podem criar para clientes
+            // REGRA: Admin/Colaborador deve especificar cliente_id
             if (usuarioLogado.nivel_acesso !== 'cliente') {
                 if (!cliente_id) {
                     return res.status(400).json({
-                        erro: 'Admin/Colaborador deve especificar o cliente_id',
-                        mensagem: 'Você não pode criar pedidos para si mesmo'
+                        erro: 'Admin/Colaborador deve especificar cliente_id'
                     });
                 }
 
-                // Verifica se o cliente existe
                 const clienteExiste = await db('usuarios')
                     .where({ id: cliente_id, nivel_acesso: 'cliente' })
                     .first();
@@ -120,7 +118,7 @@ export const PedidoController = {
                 clienteIdFinal = cliente_id;
             }
 
-            // REGRA: Todo pedido começa como "aberto" e sem responsável
+            // REGRA: Todo pedido começa "aberto" sem responsável
             const [id] = await db('pedidos').insert({
                 cliente_id: clienteIdFinal,
                 titulo,
@@ -128,13 +126,13 @@ export const PedidoController = {
                 status: 'aberto',
                 prioridade: prioridade || 'media',
                 data_entrega,
-                responsavel_id: null // Explicitamente null até alguém aceitar
+                responsavel_id: null
             });
 
             const pedido = await db('pedidos').where({ id }).first();
 
             res.status(201).json({
-                mensagem: 'Pedido criado com sucesso. Aguardando aceite de um colaborador.',
+                mensagem: 'Pedido criado. Aguardando aceite de colaborador.',
                 pedido
             });
         } catch (error) {
@@ -155,32 +153,29 @@ export const PedidoController = {
                 return res.status(404).json({ erro: 'Pedido não encontrado' });
             }
 
-            // REGRA: Cliente não pode alterar status ou responsável
+            // REGRA: Cliente não pode alterar status/responsável
             if (usuarioLogado.nivel_acesso === 'cliente') {
-                // Cliente só pode alterar título/descrição dos próprios pedidos
                 if (pedido.cliente_id !== usuarioLogado.id) {
                     return res.status(403).json({ erro: 'Sem permissão' });
                 }
 
                 if (status || responsavel_id !== undefined) {
                     return res.status(403).json({
-                        erro: 'Cliente não pode alterar status ou responsável do pedido'
+                        erro: 'Cliente não pode alterar status ou responsável'
                     });
                 }
             }
 
             const updateData: any = { updated_at: db.fn.now() };
 
-            // Campos que qualquer um pode atualizar (dentro de suas permissões)
             if (titulo) updateData.titulo = titulo;
             if (descricao !== undefined) updateData.descricao = descricao;
             if (prioridade) updateData.prioridade = prioridade;
             if (data_entrega) updateData.data_entrega = data_entrega;
 
-            // REGRA: Apenas admin/colaborador pode alterar status e responsável
+            // REGRA: Apenas admin/colaborador altera status/responsável
             if (usuarioLogado.nivel_acesso !== 'cliente') {
                 if (status) {
-                    // Validação de transições de status
                     const statusValidos = ['aberto', 'em_andamento', 'finalizado', 'cancelado'];
                     if (!statusValidos.includes(status)) {
                         return res.status(400).json({ erro: 'Status inválido' });
@@ -188,18 +183,17 @@ export const PedidoController = {
 
                     updateData.status = status;
 
-                    // REGRA: Ao aceitar pedido (aberto -> em_andamento), atribui responsável
+                    // REGRA: Ao aceitar (aberto->em_andamento), atribui responsável
                     if (status === 'em_andamento' && pedido.status === 'aberto') {
                         updateData.responsavel_id = responsavel_id || usuarioLogado.id;
                     }
 
-                    // REGRA: Ao recusar/devolver pedido, remove responsável
+                    // REGRA: Ao recusar, remove responsável
                     if (status === 'aberto' && pedido.status === 'em_andamento') {
                         updateData.responsavel_id = null;
                     }
                 }
 
-                // Permite alterar responsável explicitamente (reatribuir tarefa)
                 if (responsavel_id !== undefined) {
                     updateData.responsavel_id = responsavel_id;
                 }
@@ -239,22 +233,20 @@ export const PedidoController = {
                 return res.status(404).json({ erro: 'Pedido não encontrado' });
             }
 
-            // REGRA: Cliente só pode deletar/cancelar seus próprios pedidos
+            // REGRA: Cliente só deleta seus pedidos não finalizados
             if (usuarioLogado.nivel_acesso === 'cliente') {
                 if (pedido.cliente_id !== usuarioLogado.id) {
                     return res.status(403).json({ erro: 'Sem permissão' });
                 }
 
-                // Cliente não pode cancelar pedido já finalizado
                 if (pedido.status === 'finalizado') {
                     return res.status(400).json({
-                        erro: 'Não é possível cancelar pedido já finalizado'
+                        erro: 'Não é possível cancelar pedido finalizado'
                     });
                 }
             }
 
-            // REGRA: Admin pode deletar qualquer pedido
-            // Colaborador só pode deletar pedidos sem responsável ou que ele seja responsável
+            // REGRA: Colaborador só deleta pedidos que é responsável
             if (usuarioLogado.nivel_acesso === 'colaborador') {
                 if (pedido.responsavel_id && pedido.responsavel_id !== usuarioLogado.id) {
                     return res.status(403).json({
@@ -263,11 +255,10 @@ export const PedidoController = {
                 }
             }
 
-            // Deleta demandas vinculadas primeiro
             await db('demandas').where({ pedido_id: id }).del();
             await db('pedidos').where({ id }).del();
 
-            res.json({ mensagem: 'Pedido deletado com sucesso' });
+            res.json({ mensagem: 'Pedido deletado' });
         } catch (error) {
             console.error('Erro ao deletar:', error);
             res.status(500).json({ erro: 'Erro ao deletar pedido' });
@@ -283,16 +274,14 @@ export const PedidoController = {
             return res.status(400).json({ erro: 'Título obrigatório' });
         }
 
-        // REGRA: Apenas admin/colaborador pode criar demandas
+        // REGRA: Apenas admin/colaborador cria demandas
         if (usuarioLogado.nivel_acesso === 'cliente') {
             return res.status(403).json({
-                erro: 'Clientes não podem criar demandas',
-                mensagem: 'Demandas são criadas por colaboradores'
+                erro: 'Clientes não podem criar demandas'
             });
         }
 
         try {
-            // Verifica se o pedido existe
             const pedido = await db('pedidos').where({ id: pedido_id }).first();
 
             if (!pedido) {
@@ -328,7 +317,7 @@ export const PedidoController = {
         const { titulo, descricao, status, responsavel_id } = req.body;
         const usuarioLogado = req.user!;
 
-        // REGRA: Apenas admin/colaborador pode atualizar demandas
+        // REGRA: Apenas admin/colaborador atualiza demandas
         if (usuarioLogado.nivel_acesso === 'cliente') {
             return res.status(403).json({ erro: 'Clientes não podem atualizar demandas' });
         }
@@ -340,11 +329,11 @@ export const PedidoController = {
                 return res.status(404).json({ erro: 'Demanda não encontrada' });
             }
 
-            // REGRA: Colaborador só pode atualizar suas próprias demandas
+            // REGRA: Colaborador só atualiza suas demandas
             if (usuarioLogado.nivel_acesso === 'colaborador') {
                 if (demanda.responsavel_id !== usuarioLogado.id) {
                     return res.status(403).json({
-                        erro: 'Você só pode atualizar suas próprias demandas'
+                        erro: 'Você só pode atualizar suas demandas'
                     });
                 }
             }

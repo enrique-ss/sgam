@@ -75,6 +75,9 @@ export const DashboardController = {
                         pedidos_pendentes: Number(pedidosPendentes?.total || 0),
                         pedidos_em_andamento: Number(pedidosEmAndamento?.total || 0),
                         pedidos_finalizados: Number(pedidosFinalizados?.total || 0),
+                        pedidos_recusados: 0,
+                        pedidos_cancelados: 0,
+                        pedidos_atrasados: 0,
                         total_clientes: Number(totalClientes?.total || 0),
                         total_colaboradores: Number(totalColaboradores?.total || 0)
                     },
@@ -117,7 +120,10 @@ export const DashboardController = {
                         total_pedidos: Number(totalPedidos?.total || 0),
                         minhas_demandas: Number(meusPedidos?.total || 0),
                         pedidos_pendentes: Number(pedidosPendentes?.total || 0),
-                        pedidos_finalizados: Number(pedidosFinalizadosPorMim?.total || 0)
+                        pedidos_finalizados: Number(pedidosFinalizadosPorMim?.total || 0),
+                        pedidos_recusados: 0,
+                        pedidos_cancelados: 0,
+                        pedidos_atrasados: 0
                     },
                     meus_pedidos_recentes: pedidosRecentes
                 };
@@ -144,7 +150,7 @@ export const DashboardController = {
                 )
                 .whereIn('pedidos.status', ['aberto', 'em_andamento']);
 
-            // Cliente vê apenas seus pedidos
+            // REGRA: Cliente vê apenas seus pedidos
             if (usuarioLogado.nivel_acesso === 'cliente') {
                 query = query.where('pedidos.cliente_id', usuarioLogado.id);
             }
@@ -174,7 +180,7 @@ export const DashboardController = {
                 )
                 .where('pedidos.status', 'finalizado');
 
-            // Cliente vê apenas seus pedidos
+            // REGRA: Cliente vê apenas seus pedidos
             if (usuarioLogado.nivel_acesso === 'cliente') {
                 query = query.where('pedidos.cliente_id', usuarioLogado.id);
             }
@@ -191,10 +197,10 @@ export const DashboardController = {
     },
 
     async listarClientes(req: AuthRequest, res: Response) {
-        // Apenas admin e colaborador podem ver clientes
         const usuarioLogado = req.user!;
 
-        if (usuarioLogado.nivel_acesso === 'cliente') {
+        // Apenas admin pode ver clientes
+        if (usuarioLogado.nivel_acesso === 'cliente' || 'colaborador') {
             return res.status(403).json({ erro: 'Sem permissão' });
         }
 

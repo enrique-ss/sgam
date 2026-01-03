@@ -7,7 +7,7 @@ export const UsuarioController = {
     async listar(req: AuthRequest, res: Response) {
         const usuarioLogado = req.user!;
 
-        // REGRA: Apenas admin pode listar todos os usuários
+        // REGRA: Apenas admin lista todos os usuários
         if (usuarioLogado.nivel_acesso !== 'admin') {
             return res.status(403).json({
                 erro: 'Apenas administradores podem listar usuários'
@@ -33,8 +33,7 @@ export const UsuarioController = {
         const { id } = req.params;
         const usuarioLogado = req.user!;
 
-        // REGRA: Cliente só pode ver seus próprios dados
-        // Admin/Colaborador podem ver qualquer usuário
+        // REGRA: Cliente só vê seus próprios dados
         if (usuarioLogado.nivel_acesso === 'cliente' &&
             parseInt(id) !== usuarioLogado.id) {
             return res.status(403).json({
@@ -52,16 +51,6 @@ export const UsuarioController = {
                 return res.status(404).json({ erro: 'Usuário não encontrado' });
             }
 
-            // Se for cliente vendo outro usuário, retorna dados limitados
-            if (usuarioLogado.nivel_acesso === 'cliente' && parseInt(id) !== usuarioLogado.id) {
-                return res.json({
-                    usuario: {
-                        id: usuario.id,
-                        nome: usuario.nome
-                    }
-                });
-            }
-
             res.json({ usuario });
         } catch (error) {
             console.error('Erro ao obter:', error);
@@ -73,24 +62,20 @@ export const UsuarioController = {
         const { nome, email, senha, nivel_acesso } = req.body;
         const usuarioLogado = req.user!;
 
-        // REGRA: Apenas admin pode criar novos usuários (admin/colaborador)
+        // REGRA: Apenas admin cria usuários (admin/colaborador)
         if (usuarioLogado.nivel_acesso !== 'admin') {
             return res.status(403).json({
-                erro: 'Apenas administradores podem criar usuários',
-                mensagem: 'Use o endpoint de registro para criar contas de cliente'
+                erro: 'Apenas administradores podem criar usuários'
             });
         }
 
         if (!nome || !email || !senha) {
-            return res.status(400).json({ erro: 'Nome, email e senha são obrigatórios' });
+            return res.status(400).json({ erro: 'Dados incompletos' });
         }
 
         const niveisValidos = ['admin', 'colaborador', 'cliente'];
         if (nivel_acesso && !niveisValidos.includes(nivel_acesso)) {
-            return res.status(400).json({
-                erro: 'Nível de acesso inválido',
-                validos: niveisValidos
-            });
+            return res.status(400).json({ erro: 'Nível de acesso inválido' });
         }
 
         try {
@@ -117,7 +102,7 @@ export const UsuarioController = {
                 .first();
 
             res.status(201).json({
-                mensagem: `Usuário ${nivelFinal} criado com sucesso`,
+                mensagem: `Usuário ${nivelFinal} criado`,
                 usuario
             });
         } catch (error) {
@@ -131,8 +116,7 @@ export const UsuarioController = {
         const { nome, email, senha, nivel_acesso, ativo } = req.body;
         const usuarioLogado = req.user!;
 
-        // REGRA: Admin pode atualizar qualquer usuário
-        // Usuários podem atualizar apenas seus próprios dados (com restrições)
+        // REGRA: Admin atualiza qualquer um, usuários só a si mesmos
         const podeAtualizar =
             usuarioLogado.nivel_acesso === 'admin' ||
             parseInt(id) === usuarioLogado.id;
@@ -143,22 +127,22 @@ export const UsuarioController = {
             });
         }
 
-        // REGRA: Apenas admin pode alterar nível de acesso e status ativo
+        // REGRA: Apenas admin altera nível/status
         if (usuarioLogado.nivel_acesso !== 'admin' &&
             (nivel_acesso !== undefined || ativo !== undefined)) {
             return res.status(403).json({
-                erro: 'Apenas administradores podem alterar nível de acesso ou status ativo'
+                erro: 'Apenas admin pode alterar nível/status'
             });
         }
 
-        // REGRA: Não pode alterar próprio nível de acesso (nem admin)
+        // REGRA: Não altera próprio nível
         if (parseInt(id) === usuarioLogado.id && nivel_acesso !== undefined) {
             return res.status(400).json({
-                erro: 'Você não pode alterar seu próprio nível de acesso'
+                erro: 'Você não pode alterar seu próprio nível'
             });
         }
 
-        // REGRA: Não pode desativar a si mesmo
+        // REGRA: Não desativa a si mesmo
         if (parseInt(id) === usuarioLogado.id && ativo === false) {
             return res.status(400).json({
                 erro: 'Você não pode desativar sua própria conta'
@@ -177,14 +161,13 @@ export const UsuarioController = {
             if (nome) updateData.nome = nome;
 
             if (email) {
-                // Verifica se email já está em uso por outro usuário
                 const emailEmUso = await db('usuarios')
                     .where({ email })
                     .whereNot({ id })
                     .first();
 
                 if (emailEmUso) {
-                    return res.status(409).json({ erro: 'Email já está em uso' });
+                    return res.status(409).json({ erro: 'Email já em uso' });
                 }
 
                 updateData.email = email;
@@ -194,12 +177,11 @@ export const UsuarioController = {
                 updateData.senha = await bcrypt.hash(senha, 10);
             }
 
-            // Apenas admin pode alterar estes campos
             if (usuarioLogado.nivel_acesso === 'admin') {
                 if (nivel_acesso) {
                     const niveisValidos = ['admin', 'colaborador', 'cliente'];
                     if (!niveisValidos.includes(nivel_acesso)) {
-                        return res.status(400).json({ erro: 'Nível de acesso inválido' });
+                        return res.status(400).json({ erro: 'Nível inválido' });
                     }
                     updateData.nivel_acesso = nivel_acesso;
                 }
@@ -217,7 +199,7 @@ export const UsuarioController = {
                 .first();
 
             res.json({
-                mensagem: 'Usuário atualizado com sucesso',
+                mensagem: 'Usuário atualizado',
                 usuario
             });
         } catch (error) {
@@ -230,14 +212,14 @@ export const UsuarioController = {
         const { id } = req.params;
         const usuarioLogado = req.user!;
 
-        // REGRA: Apenas admin pode deletar usuários
+        // REGRA: Apenas admin deleta usuários
         if (usuarioLogado.nivel_acesso !== 'admin') {
             return res.status(403).json({
-                erro: 'Apenas administradores podem deletar usuários'
+                erro: 'Apenas admin pode deletar usuários'
             });
         }
 
-        // REGRA: Não pode deletar a si mesmo
+        // REGRA: Não deleta a si mesmo
         if (parseInt(id) === usuarioLogado.id) {
             return res.status(400).json({
                 erro: 'Você não pode deletar sua própria conta'
@@ -251,7 +233,7 @@ export const UsuarioController = {
                 return res.status(404).json({ erro: 'Usuário não encontrado' });
             }
 
-            // Verifica se usuário tem pedidos vinculados
+            // REGRA: Não deleta se tiver pedidos vinculados
             const temPedidos = await db('pedidos')
                 .where('cliente_id', id)
                 .orWhere('responsavel_id', id)
@@ -259,15 +241,14 @@ export const UsuarioController = {
 
             if (temPedidos) {
                 return res.status(400).json({
-                    erro: 'Não é possível deletar usuário com pedidos vinculados',
-                    mensagem: 'Desative o usuário ao invés de deletá-lo'
+                    erro: 'Usuário tem pedidos vinculados. Desative ao invés de deletar.'
                 });
             }
 
             await db('usuarios').where({ id }).del();
 
             res.json({
-                mensagem: `Usuário ${usuario.nome} deletado com sucesso`
+                mensagem: `Usuário ${usuario.nome} deletado`
             });
         } catch (error) {
             console.error('Erro ao deletar:', error);

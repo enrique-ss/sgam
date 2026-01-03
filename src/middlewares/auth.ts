@@ -9,31 +9,44 @@ export interface AuthRequest extends Request {
     user?: { id: number; nivel_acesso: string };
 }
 
+// Middleware de autenticação - verifica se token é válido
 export const authMiddleware = (req: AuthRequest, res: Response, next: NextFunction) => {
     const token = req.headers.authorization?.replace('Bearer ', '');
-    if (!token) return res.status(401).json({ erro: 'Token não fornecido' });
+
+    if (!token) {
+        return res.status(401).json({ erro: 'Token não fornecido' });
+    }
 
     try {
         const decoded = jwt.verify(token, JWT_SECRET) as { id: number; nivel_acesso: string };
+
+        // Injeta dados do usuário na requisição
         req.userId = decoded.id;
         req.userNivel = decoded.nivel_acesso;
         req.user = { id: decoded.id, nivel_acesso: decoded.nivel_acesso };
+
         next();
     } catch (error) {
-        return res.status(401).json({ erro: 'Token inválido' });
+        return res.status(401).json({ erro: 'Token inválido ou expirado' });
     }
 };
 
+// Middleware para verificar se é admin
 export const adminMiddleware = (req: AuthRequest, res: Response, next: NextFunction) => {
     if (req.userNivel !== 'admin') {
-        return res.status(403).json({ erro: 'Acesso negado. Apenas admin.' });
+        return res.status(403).json({
+            erro: 'Acesso negado. Apenas administradores.'
+        });
     }
     next();
 };
 
+// Middleware para verificar se é admin OU colaborador
 export const adminOuColaboradorMiddleware = (req: AuthRequest, res: Response, next: NextFunction) => {
     if (req.userNivel !== 'admin' && req.userNivel !== 'colaborador') {
-        return res.status(403).json({ erro: 'Acesso negado.' });
+        return res.status(403).json({
+            erro: 'Acesso negado. Apenas admin ou colaborador.'
+        });
     }
     next();
 };
