@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { db } from './database';
+import { CronService } from './service/CronService';
 
 import routerAuth from './routes/AuthRoutes';
 import routerUsuario from './routes/UsuarioRoutes';
@@ -43,6 +44,10 @@ app.use((req, res) => {
 const startServer = async () => {
   try {
     await db.raw('SELECT 1');
+
+    // Iniciar cron jobs
+    CronService.iniciar();
+
     app.listen(Number(PORT), '0.0.0.0', () => {
       console.clear();
       console.log('🚀 SGAM ONLINE EM: http://127.0.0.1:' + PORT);

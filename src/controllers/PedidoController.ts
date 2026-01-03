@@ -1,40 +1,14 @@
 import { Response } from 'express';
-import { db } from '../database';
 import { AuthRequest } from '../middlewares/auth';
+import { PedidoService } from '../service/PedidoService';
 
 export const PedidoController = {
     async listar(req: AuthRequest, res: Response) {
-        const usuarioLogado = req.user!;
-        const { status, responsavel_id } = req.query;
-
         try {
-            let query = db('pedidos')
-                .leftJoin('usuarios as c', 'pedidos.cliente_id', 'c.id')
-                .leftJoin('usuarios as r', 'pedidos.responsavel_id', 'r.id')
-                .select(
-                    'pedidos.*',
-                    'c.nome as cliente_nome',
-                    'c.email as cliente_email',
-                    'r.nome as responsavel_nome'
-                );
+            const usuarioLogado = req.user!;
+            const filtros = req.query;
 
-            // REGRA: Cliente só vê seus próprios pedidos
-            if (usuarioLogado.nivel_acesso === 'cliente') {
-                query = query.where('pedidos.cliente_id', usuarioLogado.id);
-            }
-
-            // Filtro por status (aceita múltiplos separados por vírgula)
-            if (status) {
-                const statusArray = (status as string).split(',');
-                query = query.whereIn('pedidos.status', statusArray);
-            }
-
-            // Filtro por responsável (para minhas demandas)
-            if (responsavel_id) {
-                query = query.where('pedidos.responsavel_id', responsavel_id as string);
-            }
-
-            const pedidos = await query.orderBy('pedidos.created_at', 'desc');
+            const pedidos = await PedidoService.listar(usuarioLogado, filtros);
 
             res.json({
                 pedidos,
@@ -47,356 +21,190 @@ export const PedidoController = {
     },
 
     async obter(req: AuthRequest, res: Response) {
-        const { id } = req.params;
-        const usuarioLogado = req.user!;
-
         try {
-            const pedido = await db('pedidos')
-                .leftJoin('usuarios as c', 'pedidos.cliente_id', 'c.id')
-                .leftJoin('usuarios as r', 'pedidos.responsavel_id', 'r.id')
-                .select(
-                    'pedidos.*',
-                    'c.nome as cliente_nome',
-                    'c.email as cliente_email',
-                    'r.nome as responsavel_nome'
-                )
-                .where('pedidos.id', id)
-                .first();
+            const { id } = req.params;
+            const usuarioLogado = req.user!;
 
-            if (!pedido) {
+            const resultado = await PedidoService.obter(parseInt(id), usuarioLogado);
+
+            res.json(resultado);
+        } catch (error: any) {
+            console.error('Erro ao obter:', error);
+
+            if (error.message === 'PEDIDO_NAO_ENCONTRADO') {
                 return res.status(404).json({ erro: 'Pedido não encontrado' });
             }
 
-            // REGRA: Cliente só vê seus próprios pedidos
-            if (usuarioLogado.nivel_acesso === 'cliente' &&
-                pedido.cliente_id !== usuarioLogado.id) {
+            if (error.message === 'SEM_PERMISSAO') {
                 return res.status(403).json({ erro: 'Sem permissão' });
             }
 
-            const demandas = await db('demandas')
-                .leftJoin('usuarios', 'demandas.responsavel_id', 'usuarios.id')
-                .select('demandas.*', 'usuarios.nome as responsavel_nome')
-                .where('demandas.pedido_id', id)
-                .orderBy('demandas.created_at', 'desc');
-
-            res.json({
-                pedido,
-                demandas
-            });
-        } catch (error) {
             res.status(500).json({ erro: 'Erro ao obter pedido' });
         }
     },
 
     async criar(req: AuthRequest, res: Response) {
-        const { titulo, tipo_servico, descricao, orcamento, prazo_entrega, cliente_id } = req.body;
-        const usuarioLogado = req.user!;
-
-        if (!titulo) {
-            return res.status(400).json({ erro: 'Título obrigatório' });
-        }
-
         try {
-            let clienteIdFinal = usuarioLogado.id;
+            const { titulo } = req.body;
+            const usuarioLogado = req.user!;
 
-            // REGRA: Admin/Colaborador deve especificar cliente_id
-            if (usuarioLogado.nivel_acesso !== 'cliente') {
-                if (!cliente_id) {
-                    return res.status(400).json({
-                        erro: 'Admin/Colaborador deve especificar cliente_id'
-                    });
-                }
-
-                const clienteExiste = await db('usuarios')
-                    .where({ id: cliente_id, nivel_acesso: 'cliente' })
-                    .first();
-
-                if (!clienteExiste) {
-                    return res.status(404).json({ erro: 'Cliente não encontrado' });
-                }
-
-                clienteIdFinal = cliente_id;
+            if (!titulo) {
+                return res.status(400).json({ erro: 'Título obrigatório' });
             }
 
-            // REGRA: Todo pedido começa "aberto" sem responsável e sem prioridade
-            const [id] = await db('pedidos').insert({
-                cliente_id: clienteIdFinal,
-                titulo,
-                tipo_servico, // NOVO
-                descricao,
-                orcamento, // NOVO
-                prazo_entrega, // NOVO
-                status: 'aberto',
-                prioridade: null, // Só define quando aceitar
-                responsavel_id: null,
-                data_conclusao: null
-            });
-
-            const pedido = await db('pedidos').where({ id }).first();
+            const pedido = await PedidoService.criar(req.body, usuarioLogado);
 
             res.status(201).json({
                 mensagem: 'Pedido criado. Aguardando aceite de colaborador.',
                 pedido
             });
-        } catch (error) {
+        } catch (error: any) {
             console.error('Erro ao criar:', error);
+
+            if (error.message === 'ADMIN_COLABORADOR_DEVE_ESPECIFICAR_CLIENTE') {
+                return res.status(400).json({
+                    erro: 'Admin/Colaborador deve especificar cliente_id'
+                });
+            }
+
+            if (error.message === 'CLIENTE_NAO_ENCONTRADO') {
+                return res.status(404).json({ erro: 'Cliente não encontrado' });
+            }
+
             res.status(500).json({ erro: 'Erro ao criar pedido' });
         }
     },
 
     async atualizar(req: AuthRequest, res: Response) {
-        const { id } = req.params;
-        const { titulo, tipo_servico, descricao, orcamento, prazo_entrega, status, prioridade, responsavel_id } = req.body;
-        const usuarioLogado = req.user!;
-
         try {
-            const pedido = await db('pedidos').where({ id }).first();
+            const { id } = req.params;
+            const usuarioLogado = req.user!;
 
-            if (!pedido) {
-                return res.status(404).json({ erro: 'Pedido não encontrado' });
-            }
-
-            // REGRA: Cliente não pode alterar status/responsável/prioridade
-            if (usuarioLogado.nivel_acesso === 'cliente') {
-                if (pedido.cliente_id !== usuarioLogado.id) {
-                    return res.status(403).json({ erro: 'Sem permissão' });
-                }
-
-                if (status || responsavel_id !== undefined || prioridade !== undefined) {
-                    return res.status(403).json({
-                        erro: 'Cliente não pode alterar status, responsável ou prioridade'
-                    });
-                }
-            }
-
-            const updateData: any = { updated_at: db.fn.now() };
-
-            if (titulo) updateData.titulo = titulo;
-            if (tipo_servico) updateData.tipo_servico = tipo_servico;
-            if (descricao !== undefined) updateData.descricao = descricao;
-            if (orcamento !== undefined) updateData.orcamento = orcamento;
-            if (prazo_entrega) updateData.prazo_entrega = prazo_entrega;
-
-            // REGRA: Apenas admin/colaborador altera status/responsável/prioridade
-            if (usuarioLogado.nivel_acesso !== 'cliente') {
-                if (status) {
-                    const statusValidos = ['aberto', 'em_andamento', 'finalizado', 'cancelado'];
-                    if (!statusValidos.includes(status)) {
-                        return res.status(400).json({ erro: 'Status inválido' });
-                    }
-
-                    updateData.status = status;
-
-                    // REGRA: Ao aceitar (aberto->em_andamento), atribui responsável e permite definir prioridade
-                    if (status === 'em_andamento' && pedido.status === 'aberto') {
-                        updateData.responsavel_id = responsavel_id || usuarioLogado.id;
-                        if (prioridade) {
-                            const prioridadesValidas = ['baixa', 'media', 'alta', 'urgente'];
-                            if (!prioridadesValidas.includes(prioridade)) {
-                                return res.status(400).json({ erro: 'Prioridade inválida' });
-                            }
-                            updateData.prioridade = prioridade;
-                        }
-                    }
-
-                    // REGRA: Ao finalizar ou cancelar, registra data de conclusão
-                    if ((status === 'finalizado' || status === 'cancelado') &&
-                        (pedido.status !== 'finalizado' && pedido.status !== 'cancelado')) {
-                        updateData.data_conclusao = db.fn.now();
-                    }
-
-                    // REGRA: Ao recusar, remove responsável e prioridade
-                    if (status === 'aberto' && pedido.status === 'em_andamento') {
-                        updateData.responsavel_id = null;
-                        updateData.prioridade = null;
-                        updateData.data_conclusao = null;
-                    }
-                }
-
-                // REGRA: Pode alterar prioridade apenas em pedidos em andamento
-                if (prioridade !== undefined && pedido.status === 'em_andamento') {
-                    const prioridadesValidas = ['baixa', 'media', 'alta', 'urgente'];
-                    if (!prioridadesValidas.includes(prioridade)) {
-                        return res.status(400).json({ erro: 'Prioridade inválida' });
-                    }
-                    updateData.prioridade = prioridade;
-                }
-
-                if (responsavel_id !== undefined) {
-                    updateData.responsavel_id = responsavel_id;
-                }
-            }
-
-            await db('pedidos').where({ id }).update(updateData);
-
-            const pedidoAtualizado = await db('pedidos')
-                .leftJoin('usuarios as c', 'pedidos.cliente_id', 'c.id')
-                .leftJoin('usuarios as r', 'pedidos.responsavel_id', 'r.id')
-                .select(
-                    'pedidos.*',
-                    'c.nome as cliente_nome',
-                    'r.nome as responsavel_nome'
-                )
-                .where('pedidos.id', id)
-                .first();
+            const pedido = await PedidoService.atualizar(parseInt(id), req.body, usuarioLogado);
 
             res.json({
                 mensagem: 'Pedido atualizado',
-                pedido: pedidoAtualizado
+                pedido
             });
-        } catch (error) {
+        } catch (error: any) {
             console.error('Erro ao atualizar:', error);
+
+            if (error.message === 'PEDIDO_NAO_ENCONTRADO') {
+                return res.status(404).json({ erro: 'Pedido não encontrado' });
+            }
+
+            if (error.message === 'SEM_PERMISSAO') {
+                return res.status(403).json({ erro: 'Sem permissão' });
+            }
+
+            if (error.message === 'CLIENTE_NAO_PODE_ALTERAR_STATUS_RESPONSAVEL_PRIORIDADE') {
+                return res.status(403).json({
+                    erro: 'Cliente não pode alterar status, responsável ou prioridade'
+                });
+            }
+
+            if (error.message === 'STATUS_INVALIDO') {
+                return res.status(400).json({ erro: 'Status inválido' });
+            }
+
+            if (error.message === 'PRIORIDADE_INVALIDA') {
+                return res.status(400).json({ erro: 'Prioridade inválida' });
+            }
+
             res.status(500).json({ erro: 'Erro ao atualizar pedido' });
         }
     },
 
     async deletar(req: AuthRequest, res: Response) {
-        const { id } = req.params;
-        const usuarioLogado = req.user!;
-
         try {
-            const pedido = await db('pedidos').where({ id }).first();
+            const { id } = req.params;
+            const usuarioLogado = req.user!;
 
-            if (!pedido) {
+            await PedidoService.deletar(parseInt(id), usuarioLogado);
+
+            res.json({ mensagem: 'Pedido deletado' });
+        } catch (error: any) {
+            console.error('Erro ao deletar:', error);
+
+            if (error.message === 'PEDIDO_NAO_ENCONTRADO') {
                 return res.status(404).json({ erro: 'Pedido não encontrado' });
             }
 
-            // REGRA: Cliente só deleta seus pedidos não finalizados
-            if (usuarioLogado.nivel_acesso === 'cliente') {
-                if (pedido.cliente_id !== usuarioLogado.id) {
-                    return res.status(403).json({ erro: 'Sem permissão' });
-                }
-
-                if (pedido.status === 'finalizado') {
-                    return res.status(400).json({
-                        erro: 'Não é possível cancelar pedido finalizado'
-                    });
-                }
+            if (error.message === 'SEM_PERMISSAO') {
+                return res.status(403).json({ erro: 'Sem permissão' });
             }
 
-            // REGRA: Colaborador só deleta pedidos que é responsável
-            if (usuarioLogado.nivel_acesso === 'colaborador') {
-                if (pedido.responsavel_id && pedido.responsavel_id !== usuarioLogado.id) {
-                    return res.status(403).json({
-                        erro: 'Você só pode deletar pedidos que você é responsável'
-                    });
-                }
+            if (error.message === 'NAO_PODE_CANCELAR_PEDIDO_ENTREGUE') {
+                return res.status(400).json({
+                    erro: 'Não é possível cancelar pedido entregue'
+                });
             }
 
-            await db('demandas').where({ pedido_id: id }).del();
-            await db('pedidos').where({ id }).del();
+            if (error.message === 'COLABORADOR_SO_DELETA_SEUS_PEDIDOS') {
+                return res.status(403).json({
+                    erro: 'Você só pode deletar pedidos que você é responsável'
+                });
+            }
 
-            res.json({ mensagem: 'Pedido deletado' });
-        } catch (error) {
-            console.error('Erro ao deletar:', error);
             res.status(500).json({ erro: 'Erro ao deletar pedido' });
         }
     },
 
     async criarDemanda(req: AuthRequest, res: Response) {
-        const { pedido_id } = req.params;
-        const { titulo, descricao, responsavel_id } = req.body;
-        const usuarioLogado = req.user!;
-
-        if (!titulo) {
-            return res.status(400).json({ erro: 'Título obrigatório' });
-        }
-
-        // REGRA: Apenas admin/colaborador cria demandas
-        if (usuarioLogado.nivel_acesso === 'cliente') {
-            return res.status(403).json({
-                erro: 'Clientes não podem criar demandas'
-            });
-        }
-
         try {
-            const pedido = await db('pedidos').where({ id: pedido_id }).first();
+            const { pedido_id } = req.params;
+            const { titulo } = req.body;
+            const usuarioLogado = req.user!;
 
-            if (!pedido) {
-                return res.status(404).json({ erro: 'Pedido não encontrado' });
+            if (!titulo) {
+                return res.status(400).json({ erro: 'Título obrigatório' });
             }
 
-            const [id] = await db('demandas').insert({
-                pedido_id,
-                titulo,
-                descricao,
-                responsavel_id: responsavel_id || usuarioLogado.id,
-                status: 'aberta'
-            });
-
-            const demanda = await db('demandas')
-                .leftJoin('usuarios', 'demandas.responsavel_id', 'usuarios.id')
-                .select('demandas.*', 'usuarios.nome as responsavel_nome')
-                .where('demandas.id', id)
-                .first();
+            const demanda = await PedidoService.criarDemanda(parseInt(pedido_id), req.body, usuarioLogado);
 
             res.status(201).json({
                 mensagem: 'Demanda criada',
                 demanda
             });
-        } catch (error) {
+        } catch (error: any) {
             console.error('Erro ao criar demanda:', error);
+
+            if (error.message === 'PEDIDO_NAO_ENCONTRADO') {
+                return res.status(404).json({ erro: 'Pedido não encontrado' });
+            }
+
             res.status(500).json({ erro: 'Erro ao criar demanda' });
         }
     },
 
     async atualizarDemanda(req: AuthRequest, res: Response) {
-        const { id } = req.params;
-        const { titulo, descricao, status, responsavel_id } = req.body;
-        const usuarioLogado = req.user!;
-
-        // REGRA: Apenas admin/colaborador atualiza demandas
-        if (usuarioLogado.nivel_acesso === 'cliente') {
-            return res.status(403).json({ erro: 'Clientes não podem atualizar demandas' });
-        }
-
         try {
-            const demanda = await db('demandas').where({ id }).first();
+            const { id } = req.params;
+            const usuarioLogado = req.user!;
 
-            if (!demanda) {
-                return res.status(404).json({ erro: 'Demanda não encontrada' });
-            }
-
-            // REGRA: Colaborador só atualiza suas demandas
-            if (usuarioLogado.nivel_acesso === 'colaborador') {
-                if (demanda.responsavel_id !== usuarioLogado.id) {
-                    return res.status(403).json({
-                        erro: 'Você só pode atualizar suas demandas'
-                    });
-                }
-            }
-
-            const updateData: any = { updated_at: db.fn.now() };
-
-            if (titulo) updateData.titulo = titulo;
-            if (descricao !== undefined) updateData.descricao = descricao;
-
-            if (status) {
-                const statusValidos = ['aberta', 'em_progresso', 'concluida'];
-                if (!statusValidos.includes(status)) {
-                    return res.status(400).json({ erro: 'Status inválido' });
-                }
-                updateData.status = status;
-            }
-
-            if (responsavel_id !== undefined && usuarioLogado.nivel_acesso === 'admin') {
-                updateData.responsavel_id = responsavel_id;
-            }
-
-            await db('demandas').where({ id }).update(updateData);
-
-            const demandaAtualizada = await db('demandas')
-                .leftJoin('usuarios', 'demandas.responsavel_id', 'usuarios.id')
-                .select('demandas.*', 'usuarios.nome as responsavel_nome')
-                .where('demandas.id', id)
-                .first();
+            const demanda = await PedidoService.atualizarDemanda(parseInt(id), req.body, usuarioLogado);
 
             res.json({
                 mensagem: 'Demanda atualizada',
-                demanda: demandaAtualizada
+                demanda
             });
-        } catch (error) {
+        } catch (error: any) {
             console.error('Erro ao atualizar demanda:', error);
+
+            if (error.message === 'DEMANDA_NAO_ENCONTRADA') {
+                return res.status(404).json({ erro: 'Demanda não encontrada' });
+            }
+
+            if (error.message === 'COLABORADOR_SO_ATUALIZA_SUAS_DEMANDAS') {
+                return res.status(403).json({
+                    erro: 'Você só pode atualizar suas demandas'
+                });
+            }
+
+            if (error.message === 'STATUS_DEMANDA_INVALIDO') {
+                return res.status(400).json({ erro: 'Status inválido' });
+            }
+
             res.status(500).json({ erro: 'Erro ao atualizar demanda' });
         }
     }

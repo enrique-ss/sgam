@@ -1,23 +1,11 @@
 import { Response } from 'express';
-import bcrypt from 'bcrypt';
-import { db } from '../database';
 import { AuthRequest } from '../middlewares/auth';
+import { UsuarioService } from '../service/UsuarioService';
 
 export const UsuarioController = {
     async listar(req: AuthRequest, res: Response) {
-        const usuarioLogado = req.user!;
-
-        // REGRA: Apenas admin lista todos os usuários
-        if (usuarioLogado.nivel_acesso !== 'admin') {
-            return res.status(403).json({
-                erro: 'Apenas administradores podem listar usuários'
-            });
-        }
-
         try {
-            const usuarios = await db('usuarios')
-                .select('id', 'nome', 'email', 'nivel_acesso', 'ativo', 'created_at', 'updated_at')
-                .orderBy('created_at', 'desc');
+            const usuarios = await UsuarioService.listar();
 
             res.json({
                 usuarios,
@@ -30,228 +18,136 @@ export const UsuarioController = {
     },
 
     async obter(req: AuthRequest, res: Response) {
-        const { id } = req.params;
-        const usuarioLogado = req.user!;
-
-        // REGRA: Cliente só vê seus próprios dados
-        if (usuarioLogado.nivel_acesso === 'cliente' &&
-            parseInt(id) !== usuarioLogado.id) {
-            return res.status(403).json({
-                erro: 'Você só pode visualizar seus próprios dados'
-            });
-        }
-
         try {
-            const usuario = await db('usuarios')
-                .select('id', 'nome', 'email', 'nivel_acesso', 'ativo', 'created_at', 'updated_at')
-                .where({ id })
-                .first();
+            const { id } = req.params;
+            const usuarioLogado = req.user!;
 
-            if (!usuario) {
+            // Cliente só vê seus próprios dados
+            if (usuarioLogado.nivel_acesso === 'cliente' && parseInt(id) !== usuarioLogado.id) {
+                return res.status(403).json({ erro: 'Você só pode visualizar seus próprios dados' });
+            }
+
+            const usuario = await UsuarioService.obter(parseInt(id));
+
+            res.json({ usuario });
+        } catch (error: any) {
+            console.error('Erro ao obter:', error);
+
+            if (error.message === 'USUARIO_NAO_ENCONTRADO') {
                 return res.status(404).json({ erro: 'Usuário não encontrado' });
             }
 
-            res.json({ usuario });
-        } catch (error) {
-            console.error('Erro ao obter:', error);
             res.status(500).json({ erro: 'Erro ao obter usuário' });
         }
     },
 
     async criar(req: AuthRequest, res: Response) {
-        const { nome, email, senha, nivel_acesso } = req.body;
-        const usuarioLogado = req.user!;
-
-        // REGRA: Apenas admin cria usuários (admin/colaborador)
-        if (usuarioLogado.nivel_acesso !== 'admin') {
-            return res.status(403).json({
-                erro: 'Apenas administradores podem criar usuários'
-            });
-        }
-
-        if (!nome || !email || !senha) {
-            return res.status(400).json({ erro: 'Dados incompletos' });
-        }
-
-        const niveisValidos = ['admin', 'colaborador', 'cliente'];
-        if (nivel_acesso && !niveisValidos.includes(nivel_acesso)) {
-            return res.status(400).json({ erro: 'Nível de acesso inválido' });
-        }
-
         try {
-            const emailExiste = await db('usuarios').where({ email }).first();
+            const { nome, email, senha, nivel_acesso } = req.body;
 
-            if (emailExiste) {
-                return res.status(409).json({ erro: 'Email já cadastrado' });
+            if (!nome || !email || !senha) {
+                return res.status(400).json({ erro: 'Dados incompletos' });
             }
 
-            const senhaHash = await bcrypt.hash(senha, 10);
             const nivelFinal = nivel_acesso || 'colaborador';
-
-            const [id] = await db('usuarios').insert({
-                nome,
-                email,
-                senha: senhaHash,
-                nivel_acesso: nivelFinal,
-                ativo: true
-            });
-
-            const usuario = await db('usuarios')
-                .select('id', 'nome', 'email', 'nivel_acesso', 'ativo', 'created_at')
-                .where({ id })
-                .first();
+            const usuario = await UsuarioService.criar(nome, email, senha, nivelFinal);
 
             res.status(201).json({
                 mensagem: `Usuário ${nivelFinal} criado`,
                 usuario
             });
-        } catch (error) {
+        } catch (error: any) {
             console.error('Erro ao criar:', error);
+
+            if (error.message === 'NIVEL_INVALIDO') {
+                return res.status(400).json({ erro: 'Nível de acesso inválido' });
+            }
+
+            if (error.message === 'EMAIL_JA_CADASTRADO') {
+                return res.status(409).json({ erro: 'Email já cadastrado' });
+            }
+
             res.status(500).json({ erro: 'Erro ao criar usuário' });
         }
     },
 
     async atualizar(req: AuthRequest, res: Response) {
-        const { id } = req.params;
-        const { nome, email, senha, nivel_acesso, ativo } = req.body;
-        const usuarioLogado = req.user!;
-
-        // REGRA: Admin atualiza qualquer um, usuários só a si mesmos
-        const podeAtualizar =
-            usuarioLogado.nivel_acesso === 'admin' ||
-            parseInt(id) === usuarioLogado.id;
-
-        if (!podeAtualizar) {
-            return res.status(403).json({
-                erro: 'Você só pode alterar seus próprios dados'
-            });
-        }
-
-        // REGRA: Apenas admin altera nível/status
-        if (usuarioLogado.nivel_acesso !== 'admin' &&
-            (nivel_acesso !== undefined || ativo !== undefined)) {
-            return res.status(403).json({
-                erro: 'Apenas admin pode alterar nível/status'
-            });
-        }
-
-        // REGRA: Não altera próprio nível
-        if (parseInt(id) === usuarioLogado.id && nivel_acesso !== undefined) {
-            return res.status(400).json({
-                erro: 'Você não pode alterar seu próprio nível'
-            });
-        }
-
-        // REGRA: Não desativa a si mesmo
-        if (parseInt(id) === usuarioLogado.id && ativo === false) {
-            return res.status(400).json({
-                erro: 'Você não pode desativar sua própria conta'
-            });
-        }
-
         try {
-            const usuarioExistente = await db('usuarios').where({ id }).first();
+            const { id } = req.params;
+            const usuarioLogado = req.user!;
+            const dados = req.body;
 
-            if (!usuarioExistente) {
-                return res.status(404).json({ erro: 'Usuário não encontrado' });
-            }
-
-            const updateData: any = { updated_at: db.fn.now() };
-
-            if (nome) updateData.nome = nome;
-
-            if (email) {
-                const emailEmUso = await db('usuarios')
-                    .where({ email })
-                    .whereNot({ id })
-                    .first();
-
-                if (emailEmUso) {
-                    return res.status(409).json({ erro: 'Email já em uso' });
-                }
-
-                updateData.email = email;
-            }
-
-            if (senha) {
-                updateData.senha = await bcrypt.hash(senha, 10);
-            }
-
-            if (usuarioLogado.nivel_acesso === 'admin') {
-                if (nivel_acesso) {
-                    const niveisValidos = ['admin', 'colaborador', 'cliente'];
-                    if (!niveisValidos.includes(nivel_acesso)) {
-                        return res.status(400).json({ erro: 'Nível inválido' });
-                    }
-                    updateData.nivel_acesso = nivel_acesso;
-                }
-
-                if (ativo !== undefined) {
-                    updateData.ativo = ativo;
-                }
-            }
-
-            await db('usuarios').where({ id }).update(updateData);
-
-            const usuario = await db('usuarios')
-                .select('id', 'nome', 'email', 'nivel_acesso', 'ativo', 'updated_at')
-                .where({ id })
-                .first();
+            const usuario = await UsuarioService.atualizar(
+                parseInt(id),
+                dados,
+                usuarioLogado.id,
+                usuarioLogado.nivel_acesso
+            );
 
             res.json({
                 mensagem: 'Usuário atualizado',
                 usuario
             });
-        } catch (error) {
+        } catch (error: any) {
             console.error('Erro ao atualizar:', error);
+
+            if (error.message === 'USUARIO_NAO_ENCONTRADO') {
+                return res.status(404).json({ erro: 'Usuário não encontrado' });
+            }
+
+            if (error.message === 'SEM_PERMISSAO') {
+                return res.status(403).json({ erro: 'Você só pode alterar seus próprios dados' });
+            }
+
+            if (error.message === 'NAO_PODE_ALTERAR_PROPRIO_NIVEL') {
+                return res.status(400).json({ erro: 'Você não pode alterar seu próprio nível' });
+            }
+
+            if (error.message === 'NAO_PODE_DESATIVAR_SI_MESMO') {
+                return res.status(400).json({ erro: 'Você não pode desativar sua própria conta' });
+            }
+
+            if (error.message === 'EMAIL_JA_CADASTRADO') {
+                return res.status(409).json({ erro: 'Email já em uso' });
+            }
+
+            if (error.message === 'NIVEL_INVALIDO') {
+                return res.status(400).json({ erro: 'Nível inválido' });
+            }
+
+            if (error.message === 'APENAS_ADMIN_ALTERA_NIVEL_STATUS') {
+                return res.status(403).json({ erro: 'Apenas admin pode alterar nível/status' });
+            }
+
             res.status(500).json({ erro: 'Erro ao atualizar usuário' });
         }
     },
 
     async deletar(req: AuthRequest, res: Response) {
-        const { id } = req.params;
-        const usuarioLogado = req.user!;
-
-        // REGRA: Apenas admin deleta usuários
-        if (usuarioLogado.nivel_acesso !== 'admin') {
-            return res.status(403).json({
-                erro: 'Apenas admin pode deletar usuários'
-            });
-        }
-
-        // REGRA: Não deleta a si mesmo
-        if (parseInt(id) === usuarioLogado.id) {
-            return res.status(400).json({
-                erro: 'Você não pode deletar sua própria conta'
-            });
-        }
-
         try {
-            const usuario = await db('usuarios').where({ id }).first();
+            const { id } = req.params;
+            const usuarioLogado = req.user!;
 
-            if (!usuario) {
+            const nomeUsuario = await UsuarioService.deletar(parseInt(id), usuarioLogado.id);
+
+            res.json({ mensagem: `Usuário ${nomeUsuario} deletado` });
+        } catch (error: any) {
+            console.error('Erro ao deletar:', error);
+
+            if (error.message === 'USUARIO_NAO_ENCONTRADO') {
                 return res.status(404).json({ erro: 'Usuário não encontrado' });
             }
 
-            // REGRA: Não deleta se tiver pedidos vinculados
-            const temPedidos = await db('pedidos')
-                .where('cliente_id', id)
-                .orWhere('responsavel_id', id)
-                .first();
+            if (error.message === 'NAO_PODE_DELETAR_SI_MESMO') {
+                return res.status(400).json({ erro: 'Você não pode deletar sua própria conta' });
+            }
 
-            if (temPedidos) {
+            if (error.message === 'USUARIO_COM_PEDIDOS_VINCULADOS') {
                 return res.status(400).json({
                     erro: 'Usuário tem pedidos vinculados. Desative ao invés de deletar.'
                 });
             }
 
-            await db('usuarios').where({ id }).del();
-
-            res.json({
-                mensagem: `Usuário ${usuario.nome} deletado`
-            });
-        } catch (error) {
-            console.error('Erro ao deletar:', error);
             res.status(500).json({ erro: 'Erro ao deletar usuário' });
         }
     }

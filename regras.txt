@@ -1,0 +1,69 @@
+SGAM - FLUXO E REGRAS DE NEGÓCIO
+
+1. CADASTRO E ACESSO
+
+Campos: Nome -> Email -> Senha.
+
+Unicidade: Proibido emails duplicados.
+
+Segurança: Senha criptografada (Hash).
+
+Nível Inicial: Sempre 'cliente'.
+
+Status Inicial: Sempre 'ativo'.
+
+Regra de Inatividade: Se (Nível == 'colaborador') E (Último Login > 30 dias), Status muda para 'inativo'. Admin e cliente é imune a essa regra.
+
+Bloqueio: Se Status == 'inativo', Login é negado.
+
+2. ESTADOS DO PEDIDO (STATUS)
+
+PENDENTE: Criado pelo cliente, aguardando um responsável assumir.
+
+EM ANDAMENTO: Alguém assumiu o pedido e está trabalhando nele.
+
+ATRASADO: Se (Status == 'em_andamento') E (Data Atual > Prazo).
+
+ENTREGUE: Finalizado pelo responsável.
+
+CANCELADO: Abortado pelo cliente ou responsável.
+
+3. FUNÇÕES POR NÍVEL
+
+CLIENTE:
+
+Meus Pedidos: Vê pedidos 'pendentes', 'em andamento' e 'atrasados'.
+
+Minhas Entregas: Vê pedidos 'entregues' e 'cancelados'.
+
+Perfil: Edita Nome e Senha. Nível é apenas leitura.
+
+COLABORADOR:
+
+Dashboard contém Estatísticas: (Pizza por serviço, Barras por status) e Avisos: Próximas entregas (Prioridade) e Urgentes (Atraso).
+
+Pedidos Pendentes: Lista global de pedidos sem dono para ele escolher qual "Assumir".
+
+Meus Pedidos (Em Aberto): Pedidos que ele assumiu e estão 'em andamento' ou 'atrasados'.
+
+Finalizados: Pedidos que ele entregou ou cancelou.
+
+Perfil: Edita Nome e Senha. Nível é apenas leitura.
+
+ADMINISTRADOR:
+
+Dashboard com Tudo do Colaborador + Gestão de Pessoas + Tudo de todo mundo.
+
+Gestão de Clientes: Lista todos os clientes; Edita status e nível.
+
+Gestão de Equipe: Lista todos os Colab/Admin; Edita status e nível.
+
+4. CRIAÇÃO E WORKFLOW
+
+Origem Cliente: Cria pedido como 'pendente'. Sistema puxa o ID do autor automático.
+
+Origem Adm/Colab: Cria pedido já com Cliente vinculado e Prioridade definida.
+
+Ação "Assumir": O Colaborador clica em um pedido 'pendente'. O Status muda para 'em_andamento', o responsavel_id vira o ID dele e ele define a prioridade.
+
+Ação "Concluir/Cancelar": Trava a data_conclusao com o horário do servidor (Server Timestamp).
