@@ -1,21 +1,53 @@
-
 import express from 'express';
-import { router } from './routes/router';
+import cors from 'cors';
+import dotenv from 'dotenv';
+import { db } from './database';
 
+import routerAuth from './routes/AuthRoutes';
+import routerUsuario from './routes/UsuarioRoutes';
+import routerPedido from './routes/PedidoRoutes';
+import routerDashboard from './routes/DashboardRoutes';
+
+dotenv.config();
 const app = express();
+const PORT = process.env.PORT || 3000;
 
+app.use(cors());
 app.use(express.json());
-// Fixed: Explicitly casting routes to any to avoid overload mismatch errors in certain environments where Router types might conflict
-app.use('/api', router);
+
+app.use('/api/auth', routerAuth);
+app.use('/api/usuarios', routerUsuario);
+app.use('/api/pedidos', routerPedido);
+app.use('/api/dashboard', routerDashboard);
+
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', message: 'SGAM Online!' });
+});
 
 app.get('/', (req, res) => {
-  res.json({ 
-    status: 'RSTI-FINAL API Online',
-    documentacao: 'Acesse /api/usuarios, /api/demandas, etc.'
+  res.json({
+    mensagem: 'SGAM - Sistema de Gerenciamento para Agências de Marketing',
+    versao: '1.0.0'
   });
 });
 
-const PORT = 3000;
-app.listen(PORT, () => {
-  console.log(`🚀 Servidor rodando em: http://localhost:${PORT}`);
+app.use((req, res) => {
+  res.status(404).json({ erro: 'Rota não encontrada' });
 });
+
+const startServer = async () => {
+  try {
+    await db.raw('SELECT 1');
+    app.listen(Number(PORT), '0.0.0.0', () => {
+      console.clear();
+      console.log('🚀 SGAM ONLINE EM: http://127.0.0.1:' + PORT);
+      console.log('\n👉 Admin: admin@sgam.com / Admin@123');
+      console.log('👉 CLI: npm run cli\n');
+    });
+  } catch (error) {
+    console.error('❌ Erro ao iniciar servidor:', error);
+    process.exit(1);
+  }
+};
+
+startServer();
