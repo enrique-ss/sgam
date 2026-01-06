@@ -1,25 +1,19 @@
 import { Router } from 'express';
 import { UsuarioController } from '../controllers/UsuarioController';
-import { authMiddleware, adminMiddleware } from '../middlewares/auth';
+import { authMiddleware } from '../middlewares/auth';
 
 const router = Router();
 
 // Todas as rotas requerem autenticação
 router.use(authMiddleware);
 
-// Listar todos - apenas admin
-router.get('/', adminMiddleware, UsuarioController.listar);
+// Gestão de usuários (admin)
+router.get('/clientes', UsuarioController.listarClientes);
+router.get('/equipe', UsuarioController.listarEquipe);
+router.get('/responsaveis', UsuarioController.listarResponsaveis);
+router.put('/:id', UsuarioController.editarUsuario);
 
-// Ver usuário - todos (com regras no controller)
-router.get('/:id', UsuarioController.obter);
-
-// Criar - apenas admin
-router.post('/', adminMiddleware, UsuarioController.criar);
-
-// Atualizar - todos (com regras no controller)
-router.put('/:id', UsuarioController.atualizar);
-
-// Deletar - apenas admin
-router.delete('/:id', adminMiddleware, UsuarioController.deletar);
+// Editar perfil próprio
+router.put('/perfil', UsuarioController.editarPerfil);
 
 export default router;

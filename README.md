@@ -8,7 +8,7 @@ O SGAM (Sistema de Gerenciamento de Agência de Marketing) é um sistema complet
 
 O sistema permite que clientes solicitem serviços, acompanhem o andamento em tempo real, enquanto colaboradores assumem e gerenciam os pedidos, e administradores controlam toda a operação da agência.
 
-## 💡 Por que fiz isso?
+## 💡 Por que fiz essa modelagem?
 
 Este projeto foi desenvolvido no contexto do programa "RSTI Backend", onde tínhamos uma cliente real com necessidades específicas de gestão. Durante o desenvolvimento, enfrentei um desafio interessante:
 

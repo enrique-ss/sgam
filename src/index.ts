@@ -1,63 +1,47 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import { db } from './database';
+import authRoutes from './routes/AuthRoutes';
+import usuarioRoutes from './routes/UsuarioRoutes';
+import pedidoRoutes from './routes/PedidoRoutes';
+import dashboardRoutes from './routes/DashboardRoutes';
 import { CronService } from './service/CronService';
 
-import routerAuth from './routes/AuthRoutes';
-import routerUsuario from './routes/UsuarioRoutes';
-import routerPedido from './routes/PedidoRoutes';
-import routerDashboard from './routes/DashboardRoutes';
-
 dotenv.config();
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Middlewares
 app.use(cors());
 app.use(express.json());
 
-// Registrar rotas
-app.use('/api/auth', routerAuth);
-app.use('/api/usuarios', routerUsuario);
-app.use('/api/pedidos', routerPedido);
-app.use('/api/dashboard', routerDashboard);
+// Rotas
+app.use('/api/auth', authRoutes);
+app.use('/api/usuarios', usuarioRoutes);
+app.use('/api/pedidos', pedidoRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 
-// Health check
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', message: 'SGAM Online!' });
-});
-
-// Rota raiz
+// Rota de teste
 app.get('/', (req, res) => {
-  res.json({
-    mensagem: 'SGAM - Sistema de Gerenciamento para Agências de Marketing',
+  res.json({ 
+    mensagem: 'SGAM API está rodando!',
     versao: '1.0.0'
   });
 });
 
-// 404
-app.use((req, res) => {
-  res.status(404).json({ erro: 'Rota não encontrada' });
+// Iniciar servidor
+app.listen(PORT, () => {
+  console.log(`🚀 Servidor rodando na porta ${PORT}`);
+  console.log(`📡 API disponível em http://localhost:${PORT}`);
+  
+  // Iniciar jobs automáticos
+  CronService.iniciar();
 });
 
-// Iniciar servidor
-const startServer = async () => {
-  try {
-    await db.raw('SELECT 1');
-
-    // Iniciar cron jobs
-    CronService.iniciar();
-
-    app.listen(Number(PORT), '0.0.0.0', () => {
-      console.clear();
-      console.log('🚀 SGAM ONLINE EM: http://127.0.0.1:' + PORT);
-      console.log('\n👉 Admin: admin@sgam.com / Admin@123');
-      console.log('👉 Em outro terminal digite:\n"npm run cli" para abrir a cli.\n"npm run web" para abrir a interface web.\n');
-    });
-  } catch (error) {
-    console.error('❌ Erro ao iniciar servidor:', error);
-    process.exit(1);
-  }
-};
-
-startServer();
+// Graceful shutdown
+process.on('SIGINT', () => {
+  console.log('\n🛑 Encerrando servidor...');
+  CronService.parar();
+  process.exit(0);
+});

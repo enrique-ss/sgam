@@ -1,72 +1,48 @@
-import { Response } from 'express';
-import { AuthRequest } from '../middlewares/auth';
+import { Request, Response } from 'express';
 import { DashboardService } from '../service/DashboardService';
 
-export const DashboardController = {
-    async obterDashboard(req: AuthRequest, res: Response) {
-        try {
-            const usuarioLogado = req.user!;
+export class DashboardController {
+  // GET /api/dashboard/colaborador
+  static async obterEstatisticasColaborador(req: Request, res: Response): Promise<void> {
+    try {
+      const { usuarioId, nivelAcesso } = req.body.auth;
 
-            // Cliente não tem acesso ao dashboard
-            if (usuarioLogado.nivel_acesso === 'cliente') {
-                return res.status(403).json({
-                    erro: 'Clientes não têm acesso ao dashboard',
-                    mensagem: 'Use as opções de "Meus Pedidos" para visualizar suas informações'
-                });
-            }
+      if (nivelAcesso === 'cliente') {
+        res.status(403).json({ 
+          erro: 'Clientes não têm acesso ao dashboard' 
+        });
+        return;
+      }
 
-            const dashboard = await DashboardService.obterDashboard(usuarioLogado);
+      const estatisticas = await DashboardService.obterEstatisticasColaborador(usuarioId);
 
-            res.json(dashboard);
-        } catch (error) {
-            console.error('Erro no dashboard:', error);
-            res.status(500).json({ erro: 'Erro ao carregar dashboard' });
-        }
-    },
-
-    async pedidosAbertos(req: AuthRequest, res: Response) {
-        try {
-            const usuarioLogado = req.user!;
-
-            const pedidos = await DashboardService.pedidosAbertos(usuarioLogado);
-
-            res.json({
-                pedidos,
-                total: pedidos.length
-            });
-        } catch (error) {
-            console.error('Erro ao buscar pedidos abertos:', error);
-            res.status(500).json({ erro: 'Erro ao buscar pedidos abertos' });
-        }
-    },
-
-    async entregasFinalizadas(req: AuthRequest, res: Response) {
-        try {
-            const usuarioLogado = req.user!;
-
-            const entregas = await DashboardService.entregasFinalizadas(usuarioLogado);
-
-            res.json({
-                entregas,
-                total: entregas.length
-            });
-        } catch (error) {
-            console.error('Erro ao buscar entregas:', error);
-            res.status(500).json({ erro: 'Erro ao buscar entregas' });
-        }
-    },
-
-    async listarClientes(req: AuthRequest, res: Response) {
-        try {
-            const clientes = await DashboardService.listarClientes();
-
-            res.json({
-                clientes,
-                total: clientes.length
-            });
-        } catch (error) {
-            console.error('Erro ao listar clientes:', error);
-            res.status(500).json({ erro: 'Erro ao listar clientes' });
-        }
+      res.status(200).json(estatisticas);
+    } catch (error: any) {
+      res.status(500).json({ 
+        erro: error.message 
+      });
     }
-};
+  }
+
+  // GET /api/dashboard/admin
+  static async obterEstatisticasAdmin(req: Request, res: Response): Promise<void> {
+    try {
+      const { usuarioId, nivelAcesso } = req.body.auth;
+
+      if (nivelAcesso !== 'admin') {
+        res.status(403).json({ 
+          erro: 'Apenas administradores têm acesso às estatísticas globais' 
+        });
+        return;
+      }
+
+      const estatisticas = await DashboardService.obterEstatisticasAdmin(usuarioId);
+
+      res.status(200).json(estatisticas);
+    } catch (error: any) {
+      res.status(500).json({ 
+        erro: error.message 
+      });
+    }
+  }
+}

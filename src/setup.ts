@@ -1,128 +1,120 @@
-import knex from 'knex';
-import dotenv from 'dotenv';
+import { setupDatabase } from './database';
 import bcrypt from 'bcrypt';
+import mysql from 'mysql2/promise';
+import dotenv from 'dotenv';
 
 dotenv.config();
 
-const dbName = process.env.DB_NAME || 'sgam';
+async function setup() {
+  try {
+    console.log('🔧 Configurando banco de dados...\n');
 
-async function setupDatabase() {
-    const connection = knex({
-        client: 'mysql2',
-        connection: {
-            host: process.env.DB_HOST || 'localhost',
-            port: Number(process.env.DB_PORT) || 3306,
-            user: process.env.DB_USER || 'root',
-            password: process.env.DB_PASSWORD || ''
-        }
+    // Criar banco e tabelas
+    await setupDatabase();
+
+    // Conectar ao banco
+    const connection = await mysql.createConnection({
+      host: process.env.DB_HOST || 'localhost',
+      user: process.env.DB_USER || 'root',
+      password: process.env.DB_PASSWORD || '',
+      database: process.env.DB_NAME || 'sgam'
     });
 
-    try {
-        console.log('🚀 Iniciando setup do banco de dados...\n');
+    // Criar usuário admin padrão
+    console.log('\n👤 Criando usuário administrador padrão...');
+    
+    const senhaAdmin = await bcrypt.hash('admin123', 10);
+    
+    await connection.query(
+      `INSERT INTO usuarios (nome, email, senha, nivel_acesso, ativo) 
+       VALUES ('Administrador', 'admin@sgam.com', ?, 'admin', true)
+       ON DUPLICATE KEY UPDATE id=id`,
+      [senhaAdmin]
+    );
 
-        await connection.raw(`CREATE DATABASE IF NOT EXISTS ${dbName}`);
-        console.log(`✅ Banco "${dbName}" criado/verificado!`);
-        await connection.destroy();
+    console.log('✅ Usuário admin criado:');
+    console.log('   Email: admin@sgam.com');
+    console.log('   Senha: admin123\n');
 
-        const db = knex({
-            client: 'mysql2',
-            connection: {
-                host: process.env.DB_HOST || 'localhost',
-                port: Number(process.env.DB_PORT) || 3306,
-                user: process.env.DB_USER || 'root',
-                password: process.env.DB_PASSWORD || '',
-                database: dbName
-            }
-        });
+    // Criar alguns usuários de exemplo
+    console.log('👥 Criando usuários de exemplo...\n');
 
-        console.log('\n📋 Criando tabelas...\n');
+    const senhaColaborador = await bcrypt.hash('senha123', 10);
+    const senhaCliente = await bcrypt.hash('senha123', 10);
 
-        // Deletar na ordem correta
-        if (await db.schema.hasTable('demandas')) {
-            await db.schema.dropTable('demandas');
-            console.log('🗑️  Tabela demandas removida');
-        }
+    // Colaborador
+    await connection.query(
+      `INSERT INTO usuarios (nome, email, senha, nivel_acesso, ativo) 
+       VALUES ('Maria Silva', 'maria@sgam.com', ?, 'colaborador', true)
+       ON DUPLICATE KEY UPDATE id=id`,
+      [senhaColaborador]
+    );
 
-        if (await db.schema.hasTable('pedidos')) {
-            await db.schema.dropTable('pedidos');
-            console.log('🗑️  Tabela pedidos removida');
-        }
+    await connection.query(
+      `INSERT INTO usuarios (nome, email, senha, nivel_acesso, ativo) 
+       VALUES ('João Costa', 'joao@sgam.com', ?, 'colaborador', true)
+       ON DUPLICATE KEY UPDATE id=id`,
+      [senhaColaborador]
+    );
 
-        if (await db.schema.hasTable('usuarios')) {
-            await db.schema.dropTable('usuarios');
-            console.log('🗑️  Tabela usuarios removida');
-        }
+    // Clientes
+    await connection.query(
+      `INSERT INTO usuarios (nome, email, senha, nivel_acesso, ativo) 
+       VALUES ('Pedro Santos', 'pedro@cliente.com', ?, 'cliente', true)
+       ON DUPLICATE KEY UPDATE id=id`,
+      [senhaCliente]
+    );
 
-        console.log('');
+    await connection.query(
+      `INSERT INTO usuarios (nome, email, senha, nivel_acesso, ativo) 
+       VALUES ('Ana Oliveira', 'ana@cliente.com', ?, 'cliente', true)
+       ON DUPLICATE KEY UPDATE id=id`,
+      [senhaCliente]
+    );
 
-        // 1. Tabela de Usuários
-        await db.schema.createTable('usuarios', (table) => {
-            table.increments('id').primary();
-            table.string('nome', 255).notNullable();
-            table.string('email', 255).notNullable().unique();
-            table.string('senha', 255).notNullable();
-            table.enum('nivel_acesso', ['admin', 'colaborador', 'cliente']).defaultTo('cliente');
-            table.boolean('ativo').defaultTo(true);
-            table.timestamp('ultimo_login').nullable();
-            table.timestamp('created_at').defaultTo(db.fn.now());
-            table.timestamp('updated_at').defaultTo(db.fn.now());
-        });
-        console.log('✅ Tabela usuarios criada');
+    console.log('✅ Usuários de exemplo criados:');
+    console.log('   Colaboradores: maria@sgam.com, joao@sgam.com');
+    console.log('   Clientes: pedro@cliente.com, ana@cliente.com');
+    console.log('   Senha para todos: senha123\n');
 
-        // 2. Tabela de Pedidos
-        await db.schema.createTable('pedidos', (table) => {
-            table.increments('id').primary();
-            table.integer('cliente_id').unsigned().notNullable();
-            table.string('titulo', 255).notNullable();
-            table.string('tipo_servico', 100).nullable();
-            table.text('descricao');
-            table.decimal('orcamento', 10, 2).nullable();
-            table.date('prazo_entrega').nullable();
-            table.enum('status', ['pendente', 'em_andamento', 'atrasado', 'entregue', 'cancelado']).defaultTo('pendente');
-            table.enum('prioridade', ['baixa', 'media', 'alta', 'urgente']).nullable();
-            table.integer('responsavel_id').unsigned().nullable();
-            table.timestamp('data_conclusao').nullable();
-            table.timestamp('created_at').defaultTo(db.fn.now());
-            table.timestamp('updated_at').defaultTo(db.fn.now());
-            table.foreign('cliente_id').references('usuarios.id').onDelete('CASCADE');
-            table.foreign('responsavel_id').references('usuarios.id').onDelete('SET NULL');
-        });
-        console.log('✅ Tabela pedidos criada');
+    // Criar alguns pedidos de exemplo
+    console.log('📋 Criando pedidos de exemplo...\n');
 
-        // 3. Tabela de Demandas
-        await db.schema.createTable('demandas', (table) => {
-            table.increments('id').primary();
-            table.integer('pedido_id').unsigned().notNullable();
-            table.string('titulo', 255).notNullable();
-            table.text('descricao');
-            table.integer('responsavel_id').unsigned().nullable();
-            table.enum('status', ['aberta', 'em_progresso', 'concluida']).defaultTo('aberta');
-            table.timestamp('created_at').defaultTo(db.fn.now());
-            table.timestamp('updated_at').defaultTo(db.fn.now());
-            table.foreign('pedido_id').references('pedidos.id').onDelete('CASCADE');
-            table.foreign('responsavel_id').references('usuarios.id').onDelete('SET NULL');
-        });
-        console.log('✅ Tabela demandas criada');
+    // Pedido pendente
+    await connection.query(
+      `INSERT INTO pedidos 
+       (cliente_id, titulo, tipo_servico, descricao, orcamento, prazo_entrega, status) 
+       VALUES (4, 'Logo para Pet Shop', 'Design', 'Criar uma logo moderna para pet shop', 1500.00, '2026-02-15', 'pendente')
+       ON DUPLICATE KEY UPDATE id=id`
+    );
 
-        // Criar admin padrão
-        console.log('\n👤 Criando admin padrão...');
-        const senhaHash = await bcrypt.hash('Admin@123', 10);
-        await db('usuarios').insert({
-            nome: 'Administrador',
-            email: 'admin@sgam.com',
-            senha: senhaHash,
-            nivel_acesso: 'admin'
-        });
-        console.log('✅ Admin criado: admin@sgam.com / Admin@123');
+    // Pedido em andamento
+    await connection.query(
+      `INSERT INTO pedidos 
+       (cliente_id, responsavel_id, titulo, tipo_servico, descricao, orcamento, prazo_entrega, status, prioridade) 
+       VALUES (4, 2, 'Site Institucional', 'Desenvolvimento Web', 'Desenvolver site institucional responsivo', 5000.00, '2026-02-20', 'em_andamento', 'alta')
+       ON DUPLICATE KEY UPDATE id=id`
+    );
 
-        console.log('\n🎉 Setup concluído!\n');
+    // Pedido entregue
+    await connection.query(
+      `INSERT INTO pedidos 
+       (cliente_id, responsavel_id, titulo, tipo_servico, descricao, orcamento, prazo_entrega, status, prioridade, data_conclusao) 
+       VALUES (5, 2, 'Campanha Social Media', 'Social Media', 'Criar campanha para redes sociais', 2000.00, '2026-01-10', 'entregue', 'media', '2026-01-09 14:30:00')
+       ON DUPLICATE KEY UPDATE id=id`
+    );
 
-        await db.destroy();
-        process.exit(0);
-    } catch (error) {
-        console.error('❌ Erro:', error);
-        process.exit(1);
-    }
+    console.log('✅ Pedidos de exemplo criados\n');
+
+    await connection.end();
+
+    console.log('🎉 Configuração concluída com sucesso!');
+    console.log('🚀 Execute "npm run dev" para iniciar o servidor\n');
+
+  } catch (error) {
+    console.error('❌ Erro durante a configuração:', error);
+    process.exit(1);
+  }
 }
 
-setupDatabase();
+setup();

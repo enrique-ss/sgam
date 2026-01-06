@@ -156,7 +156,7 @@ Agora vamos detalhar **o que guardar** sobre cada "coisa" identificada.
 ┌─────────────────────────────────────┐
 │              USUARIOS               │
 ├─────────────────────────────────────┤
-│ 🔑 id            → Identificador    │
+│ 🔑 id (PK)       → Identificador    │
 │ 👤 nome          → "João Silva"     │
 │ 📧 email         → Login único      │
 │ 🔒 senha         → Criptografada    │
@@ -244,20 +244,22 @@ SE ativo == false:
 ┌─────────────────────────────────────┐
 │           PEDIDOS                   │
 ├─────────────────────────────────────┤
-│ 🔑 id             → Identificador   │
+│ 🔑 id (PK)           → Identificador│
 │ 👤 cliente_id (FK)   → Quem pediu   │
 │ 👤 responsavel_id (FK) → Quem assumiu│
-│ 📝 titulo         → "Logo Nova"     │
-│ 🏷️ tipo_servico   → "Design"        │
-│ 📄 descricao      → Detalhes        │
-│ 💰 orcamento      → R$ 5.000        │
-│ 📅 prazo_entrega  → 2026-01-20      │
-│ 🚦 status         → Estado atual     │
-│ ⚡ prioridade     → Importância     │
-│ ✅ data_conclusao → Quando acabou   │
-│ 📅 criado_em      → Quando criou    │
-│ 🔄 atualizado_em  → Última mudança  │
-└─────────────────────────────────────┘
+│ 📝 titulo            → "Logo Nova"  │
+│ 🏷️ tipo_servico      → "Design"     │
+│ 📄 descricao         → Detalhes     │
+│ 💰 orcamento         → R$ 5.000     │
+│ 📅 prazo_entrega     → 2026-01-20   │
+│ 🚦 status            → Estado atual │
+│ ⚡ prioridade        → Importância  │
+│ 👤 cancelado_por (FK) → Quem cancelou│
+│ 👤 concluido_por (FK) → Quem finalizou│
+│ ✅ data_conclusao    → Quando acabou│
+│ 📅 criado_em         → Quando criou │
+│ 🔄 atualizado_em     → Última mudança│
+└──────────────────────────────────────┘
 ```
 
 ### **📝 Regras ao Criar Pedido (CLIENTE)**
@@ -350,10 +352,34 @@ PEDIDOS:
 | orcamento      | DECIMAL(10,2) | NOT NULL                      | Valor obrigatório até 99.999.999,99         |
 | prazo_entrega  | DATE          | NOT NULL                      | Data limite obrigatória (YYYY-MM-DD)        |
 | status         | ENUM          | DEFAULT 'pendente'            | pendente, em_andamento, atrasado, entregue, cancelado 
-| prioridade     | ENUM          | NOT NULL                      | baixa, media, alta, urgente (obrigatório)   |
+| prioridade     | ENUM          | NULL                          | baixa, media, alta, urgente (obrigatório)   |
+| cancelado_por  | INT           |FK usuarios.id, NULL           | Quem cancelou o pedido (rastreabilidade)    |
+| concluido_por  | INT           |FK usuarios.id, NULL           | Quem concluiu o pedido (rastreabilidade)    |
 | data_conclusao | TIMESTAMP     | NULL                          | Preenche automaticamente ao finalizar       |
 | criado_em      | TIMESTAMP     | DEFAULT CURRENT_TIMESTAMP     | Preenche automaticamente ao criar           |
 | atualizado_em  | TIMESTAMP     | DEFAULT CURRENT_TIMESTAMP     | Atualiza automaticamente ao modificar       |
+
+PEDIDOS_STATUS_LOG
+
+📦 Estrutura da Tabela: PEDIDOS_STATUS_LOG
+Para que serve?
+
+Guardar histórico completo de mudanças de status
+Rastreabilidade: saber quem mudou o quê e quando
+Auditoria: identificar padrões e problemas no fluxo
+
+┌─────────────────────────────────────┐
+│      PEDIDOS_STATUS_LOG             │
+├─────────────────────────────────────┤
+│ 🔑 id (PK)          → Identificador │
+│ 📋 pedido_id (FK)   → Qual pedido   │
+│ 🔴 status_anterior  → Estado antigo │
+│ 🟢 status_novo      → Estado novo   │
+│ 👤 alterado_por (FK) → Quem mudou   │
+│ 📅 alterado_em      → Quando mudou  │
+└─────────────────────────────────────┘
+📋 Especificações Técnicas - PEDIDOS_STATUS_LOG
+CampoTipoRestriçõesPor que?idINTPK, AUTO_INCREMENTNúmero único gerado automaticamentepedido_idINTFK, NOT NULLConecta com PEDIDOS.idstatus_anteriorENUMNULLEstado antes da mudança (NULL na criação)status_novoENUMNOT NULLEstado depois da mudançaalterado_porINTFK, NULLConecta com USUARIOS.id (NULL = sistema)alterado_emTIMESTAMPDEFAULT CURRENT_TIMESTAMPQuando a mudança aconteceu
 
 ## 🚦 PASSO 3: DEFINIR FLUXO DE ESTADOS
 

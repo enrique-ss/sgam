@@ -1,67 +1,96 @@
 import { Request, Response } from 'express';
 import { AuthService } from '../service/AuthService';
 
-export const AuthController = {
-    async registrar(req: Request, res: Response) {
-        try {
-            const { nome, email, senha } = req.body;
+export class AuthController {
+  // POST /api/auth/cadastrar
+  static async cadastrar(req: Request, res: Response): Promise<void> {
+    try {
+      const { nome, email, senha } = req.body;
 
-            if (!nome || !email || !senha) {
-                return res.status(400).json({ erro: 'Dados incompletos' });
-            }
-
-            const resultado = await AuthService.registrar(nome, email, senha);
-
-            res.status(201).json({
-                mensagem: 'Conta criada como cliente',
-                token: resultado.token,
-                usuario: resultado.usuario
-            });
-        } catch (error: any) {
-            console.error('Erro ao registrar:', error);
-
-            if (error.message === 'EMAIL_JA_CADASTRADO') {
-                return res.status(409).json({ erro: 'Email já cadastrado' });
-            }
-
-            res.status(500).json({ erro: 'Erro ao registrar' });
-        }
-    },
-
-    async login(req: Request, res: Response) {
-        try {
-            const { email, senha } = req.body;
-
-            if (!email || !senha) {
-                return res.status(400).json({ erro: 'Email e senha obrigatórios' });
-            }
-
-            const resultado = await AuthService.login(email, senha);
-
-            res.json({
-                mensagem: 'Login realizado',
-                token: resultado.token,
-                usuario: resultado.usuario
-            });
-        } catch (error: any) {
-            console.error('Erro ao fazer login:', error);
-
-            if (error.message === 'CREDENCIAIS_INVALIDAS') {
-                return res.status(401).json({ erro: 'Email ou senha incorretos' });
-            }
-
-            if (error.message === 'CONTA_DESATIVADA') {
-                return res.status(403).json({ erro: 'Conta desativada. Contate o administrador.' });
-            }
-
-            res.status(500).json({ erro: 'Erro ao fazer login' });
-        }
-    },
-
-    async verificarToken(req: Request, res: Response) {
-        res.json({
-            valido: true,
-            usuario: (req as any).user
+      // Validações básicas
+      if (!nome || !email || !senha) {
+        res.status(400).json({ 
+          erro: 'Todos os campos são obrigatórios' 
         });
+        return;
+      }
+
+      const usuario = await AuthService.cadastrar(nome, email, senha);
+
+      // Não retornar senha
+      const { senha: _, ...usuarioSemSenha } = usuario;
+
+      res.status(201).json({
+        mensagem: 'Usuário cadastrado com sucesso',
+        usuario: usuarioSemSenha
+      });
+    } catch (error: any) {
+      res.status(400).json({ 
+        erro: error.message 
+      });
     }
-};
+  }
+
+  // POST /api/auth/login
+  static async login(req: Request, res: Response): Promise<void> {
+    try {
+      const { email, senha } = req.body;
+
+      // Validações básicas
+      if (!email || !senha) {
+        res.status(400).json({ 
+          erro: 'Email e senha são obrigatórios' 
+        });
+        return;
+      }
+
+      const usuario = await AuthService.login(email, senha);
+
+      // Não retornar senha
+      const { senha: _, ...usuarioSemSenha } = usuario;
+
+      // Em produção, aqui geraria um JWT token
+      // Por simplicidade, retornamos os dados do usuário
+      res.status(200).json({
+        mensagem: 'Login realizado com sucesso',
+        usuario: usuarioSemSenha
+      });
+    } catch (error: any) {
+      res.status(401).json({ 
+        erro: error.message 
+      });
+    }
+  }
+
+  // GET /api/auth/me/:id
+  static async buscarPerfil(req: Request, res: Response): Promise<void> {
+    try {
+      const id = parseInt(req.params.id);
+
+      if (isNaN(id)) {
+        res.status(400).json({ 
+          erro: 'ID inválido' 
+        });
+        return;
+      }
+
+      const usuario = await AuthService.buscarPorId(id);
+
+      if (!usuario) {
+        res.status(404).json({ 
+          erro: 'Usuário não encontrado' 
+        });
+        return;
+      }
+
+      // Não retornar senha
+      const { senha: _, ...usuarioSemSenha } = usuario;
+
+      res.status(200).json(usuarioSemSenha);
+    } catch (error: any) {
+      res.status(500).json({ 
+        erro: error.message 
+      });
+    }
+  }
+}

@@ -1,265 +1,162 @@
-import { db } from '../database';
+import pool from '../database';
+import { RowDataPacket } from 'mysql2';
 
-export const DashboardService = {
-    async obterDashboard(usuarioLogado: any) {
-        let dashboard: any = {
-            usuario: {
-                id: usuarioLogado.id,
-                nivel_acesso: usuarioLogado.nivel_acesso
-            }
-        };
+export interface EstatisticasPessoais {
+  porTipoServico: { tipo: string; total: number }[];
+  porStatus: { status: string; total: number }[];
+  proximasEntregas: any[];
+  pedidosAtrasados: any[];
+}
 
-        if (usuarioLogado.nivel_acesso === 'admin') {
-            const totalPedidos = await db('pedidos').count('* as total').first() as { total: number } | undefined;
+export interface EstatisticasGlobais {
+  totalPedidos: number;
+  taxaConclusao: number;
+  tempoMedioEntrega: number;
+  pedidosAtrasados: number;
+  porResponsavel: {
+    nome: string;
+    emAberto: number;
+    atrasados: number;
+  }[];
+  alertasInatividade: {
+    nome: string;
+    diasSemLogin: number;
+    ativo: boolean;
+  }[];
+}
 
-            const pedidosPorStatus = await db('pedidos')
-                .select('status')
-                .count('* as quantidade')
-                .groupBy('status');
+export class DashboardService {
+  // Dashboard Colaborador (estatísticas pessoais)
+  static async obterEstatisticasColaborador(colaboradorId: number): Promise<EstatisticasPessoais> {
+    // Pedidos por tipo de serviço
+    const [porTipo] = await pool.query<RowDataPacket[]>(
+      `SELECT tipo_servico as tipo, COUNT(*) as total 
+       FROM pedidos 
+       WHERE responsavel_id = ? 
+       GROUP BY tipo_servico`,
+      [colaboradorId]
+    );
 
-            const pedidosPorServico = await db('pedidos')
-                .select('tipo_servico')
-                .count('* as quantidade')
-                .whereNotNull('tipo_servico')
-                .groupBy('tipo_servico');
+    // Pedidos por status
+    const [porStatus] = await pool.query<RowDataPacket[]>(
+      `SELECT status, COUNT(*) as total 
+       FROM pedidos 
+       WHERE responsavel_id = ? 
+       GROUP BY status`,
+      [colaboradorId]
+    );
 
-            const pedidosPendentes = await db('pedidos')
-                .where('status', 'pendente')
-                .count('* as total')
-                .first() as { total: number } | undefined;
+    // Próximas entregas (ordenadas por prioridade)
+    const [proximasEntregas] = await pool.query<RowDataPacket[]>(
+      `SELECT p.id, p.titulo, p.prazo_entrega, p.prioridade, u.nome as cliente_nome 
+       FROM pedidos p 
+       JOIN usuarios u ON p.cliente_id = u.id 
+       WHERE p.responsavel_id = ? 
+       AND p.status IN ('em_andamento', 'atrasado')
+       ORDER BY 
+         CASE p.prioridade
+           WHEN 'urgente' THEN 1
+           WHEN 'alta' THEN 2
+           WHEN 'media' THEN 3
+           WHEN 'baixa' THEN 4
+         END,
+         p.prazo_entrega ASC
+       LIMIT 5`,
+      [colaboradorId]
+    );
 
-            const pedidosEmAndamento = await db('pedidos')
-                .where('status', 'em_andamento')
-                .count('* as total')
-                .first() as { total: number } | undefined;
+    // Pedidos atrasados
+    const [pedidosAtrasados] = await pool.query<RowDataPacket[]>(
+      `SELECT p.id, p.titulo, p.prazo_entrega, u.nome as cliente_nome 
+       FROM pedidos p 
+       JOIN usuarios u ON p.cliente_id = u.id 
+       WHERE p.responsavel_id = ? 
+       AND p.status = 'atrasado' 
+       ORDER BY p.prazo_entrega ASC`,
+      [colaboradorId]
+    );
 
-            const pedidosAtrasados = await db('pedidos')
-                .where('status', 'atrasado')
-                .count('* as total')
-                .first() as { total: number } | undefined;
+    return {
+      porTipoServico: porTipo as any[],
+      porStatus: porStatus as any[],
+      proximasEntregas: proximasEntregas as any[],
+      pedidosAtrasados: pedidosAtrasados as any[]
+    };
+  }
 
-            const pedidosEntregues = await db('pedidos')
-                .where('status', 'entregue')
-                .count('* as total')
-                .first() as { total: number } | undefined;
+  // Dashboard Admin (estatísticas pessoais + globais)
+  static async obterEstatisticasAdmin(adminId: number): Promise<{
+    pessoais: EstatisticasPessoais;
+    globais: EstatisticasGlobais;
+  }> {
+    // Estatísticas pessoais (igual ao colaborador)
+    const pessoais = await this.obterEstatisticasColaborador(adminId);
 
-            const pedidosCancelados = await db('pedidos')
-                .where('status', 'cancelado')
-                .count('* as total')
-                .first() as { total: number } | undefined;
+    // Estatísticas globais
+    const [totalPedidosResult] = await pool.query<RowDataPacket[]>(
+      'SELECT COUNT(*) as total FROM pedidos'
+    );
+    const totalPedidos = totalPedidosResult[0].total;
 
-            const totalClientes = await db('usuarios')
-                .where('nivel_acesso', 'cliente')
-                .count('* as total')
-                .first() as { total: number } | undefined;
+    const [pedidosEntreguesResult] = await pool.query<RowDataPacket[]>(
+      'SELECT COUNT(*) as total FROM pedidos WHERE status = "entregue"'
+    );
+    const pedidosEntregues = pedidosEntreguesResult[0].total;
 
-            const totalColaboradores = await db('usuarios')
-                .where('nivel_acesso', 'colaborador')
-                .count('* as total')
-                .first() as { total: number } | undefined;
+    const taxaConclusao = totalPedidos > 0 
+      ? Math.round((pedidosEntregues / totalPedidos) * 100) 
+      : 0;
 
-            const pedidosRecentes = await db('pedidos')
-                .leftJoin('usuarios as c', 'pedidos.cliente_id', 'c.id')
-                .leftJoin('usuarios as r', 'pedidos.responsavel_id', 'r.id')
-                .select(
-                    'pedidos.*',
-                    'c.nome as cliente_nome',
-                    'r.nome as responsavel_nome'
-                )
-                .orderBy('pedidos.created_at', 'desc')
-                .limit(10);
+    // Tempo médio de entrega (em dias)
+    const [tempoMedioResult] = await pool.query<RowDataPacket[]>(
+      `SELECT AVG(DATEDIFF(data_conclusao, criado_em)) as media 
+       FROM pedidos 
+       WHERE status = 'entregue'`
+    );
+    const tempoMedioEntrega = Math.round(tempoMedioResult[0].media || 0);
 
-            const pedidosUrgentes = await db('pedidos')
-                .leftJoin('usuarios as c', 'pedidos.cliente_id', 'c.id')
-                .select(
-                    'pedidos.*',
-                    'c.nome as cliente_nome'
-                )
-                .where('pedidos.status', 'atrasado')
-                .orWhere('pedidos.prioridade', 'urgente')
-                .orderBy('pedidos.prazo_entrega', 'asc')
-                .limit(5);
+    // Pedidos atrasados (total)
+    const [pedidosAtrasadosResult] = await pool.query<RowDataPacket[]>(
+      'SELECT COUNT(*) as total FROM pedidos WHERE status = "atrasado"'
+    );
+    const pedidosAtrasados = pedidosAtrasadosResult[0].total;
 
-            const proximasEntregas = await db('pedidos')
-                .leftJoin('usuarios as c', 'pedidos.cliente_id', 'c.id')
-                .leftJoin('usuarios as r', 'pedidos.responsavel_id', 'r.id')
-                .select(
-                    'pedidos.*',
-                    'c.nome as cliente_nome',
-                    'r.nome as responsavel_nome'
-                )
-                .whereIn('pedidos.status', ['em_andamento', 'atrasado'])
-                .whereNotNull('pedidos.prazo_entrega')
-                .orderBy('pedidos.prazo_entrega', 'asc')
-                .limit(5);
+    // Visão por responsável
+    const [porResponsavel] = await pool.query<RowDataPacket[]>(
+      `SELECT 
+         u.nome,
+         COUNT(CASE WHEN p.status IN ('em_andamento', 'atrasado') THEN 1 END) as emAberto,
+         COUNT(CASE WHEN p.status = 'atrasado' THEN 1 END) as atrasados
+       FROM usuarios u
+       LEFT JOIN pedidos p ON u.id = p.responsavel_id
+       WHERE u.nivel_acesso IN ('colaborador', 'admin')
+       AND u.ativo = true
+       GROUP BY u.id, u.nome
+       ORDER BY u.nome`
+    );
 
-            dashboard = {
-                ...dashboard,
-                estatisticas: {
-                    total_pedidos: Number(totalPedidos?.total || 0),
-                    pedidos_por_status: pedidosPorStatus,
-                    pedidos_por_servico: pedidosPorServico,
-                    pedidos_pendentes: Number(pedidosPendentes?.total || 0),
-                    pedidos_em_andamento: Number(pedidosEmAndamento?.total || 0),
-                    pedidos_atrasados: Number(pedidosAtrasados?.total || 0),
-                    pedidos_entregues: Number(pedidosEntregues?.total || 0),
-                    pedidos_cancelados: Number(pedidosCancelados?.total || 0),
-                    total_clientes: Number(totalClientes?.total || 0),
-                    total_colaboradores: Number(totalColaboradores?.total || 0)
-                },
-                pedidos_recentes: pedidosRecentes,
-                avisos: {
-                    pedidos_urgentes: pedidosUrgentes,
-                    proximas_entregas: proximasEntregas
-                }
-            };
-        } else if (usuarioLogado.nivel_acesso === 'colaborador') {
-            const totalPedidos = await db('pedidos').count('* as total').first() as { total: number } | undefined;
+    // Alertas de inatividade
+    const [alertasInatividade] = await pool.query<RowDataPacket[]>(
+      `SELECT 
+         nome,
+         DATEDIFF(CURDATE(), ultimo_login) as diasSemLogin,
+         ativo
+       FROM usuarios
+       WHERE nivel_acesso = 'colaborador'
+       AND DATEDIFF(CURDATE(), ultimo_login) >= 25
+       ORDER BY diasSemLogin DESC`
+    );
 
-            const meusPedidos = await db('pedidos')
-                .where('responsavel_id', usuarioLogado.id)
-                .whereIn('status', ['em_andamento', 'atrasado'])
-                .count('* as total')
-                .first() as { total: number } | undefined;
-
-            const pedidosPorServico = await db('pedidos')
-                .select('tipo_servico')
-                .count('* as quantidade')
-                .where('responsavel_id', usuarioLogado.id)
-                .whereNotNull('tipo_servico')
-                .groupBy('tipo_servico');
-
-            const pedidosPorStatus = await db('pedidos')
-                .select('status')
-                .count('* as quantidade')
-                .where('responsavel_id', usuarioLogado.id)
-                .groupBy('status');
-
-            const pedidosPendentes = await db('pedidos')
-                .where('status', 'pendente')
-                .count('* as total')
-                .first() as { total: number } | undefined;
-
-            const pedidosEntreguesPorMim = await db('pedidos')
-                .where('responsavel_id', usuarioLogado.id)
-                .where('status', 'entregue')
-                .count('* as total')
-                .first() as { total: number } | undefined;
-
-            const pedidosRecentes = await db('pedidos')
-                .leftJoin('usuarios as c', 'pedidos.cliente_id', 'c.id')
-                .select(
-                    'pedidos.*',
-                    'c.nome as cliente_nome'
-                )
-                .where('pedidos.responsavel_id', usuarioLogado.id)
-                .orderBy('pedidos.created_at', 'desc')
-                .limit(5);
-
-            const meusUrgentes = await db('pedidos')
-                .leftJoin('usuarios as c', 'pedidos.cliente_id', 'c.id')
-                .select(
-                    'pedidos.*',
-                    'c.nome as cliente_nome'
-                )
-                .where('pedidos.responsavel_id', usuarioLogado.id)
-                .where(function () {
-                    this.where('pedidos.status', 'atrasado')
-                        .orWhere('pedidos.prioridade', 'urgente');
-                })
-                .orderBy('pedidos.prazo_entrega', 'asc')
-                .limit(5);
-
-            const minhasProximasEntregas = await db('pedidos')
-                .leftJoin('usuarios as c', 'pedidos.cliente_id', 'c.id')
-                .select(
-                    'pedidos.*',
-                    'c.nome as cliente_nome'
-                )
-                .where('pedidos.responsavel_id', usuarioLogado.id)
-                .whereIn('pedidos.status', ['em_andamento', 'atrasado'])
-                .whereNotNull('pedidos.prazo_entrega')
-                .orderBy('pedidos.prazo_entrega', 'asc')
-                .limit(5);
-
-            dashboard = {
-                ...dashboard,
-                estatisticas: {
-                    total_pedidos: Number(totalPedidos?.total || 0),
-                    minhas_demandas: Number(meusPedidos?.total || 0),
-                    pedidos_por_servico: pedidosPorServico,
-                    pedidos_por_status: pedidosPorStatus,
-                    pedidos_pendentes: Number(pedidosPendentes?.total || 0),
-                    pedidos_entregues: Number(pedidosEntreguesPorMim?.total || 0)
-                },
-                meus_pedidos_recentes: pedidosRecentes,
-                avisos: {
-                    meus_urgentes: meusUrgentes,
-                    minhas_proximas_entregas: minhasProximasEntregas
-                }
-            };
-        }
-
-        return dashboard;
-    },
-
-    async pedidosAbertos(usuarioLogado: any) {
-        let query = db('pedidos')
-            .leftJoin('usuarios as c', 'pedidos.cliente_id', 'c.id')
-            .leftJoin('usuarios as r', 'pedidos.responsavel_id', 'r.id')
-            .select(
-                'pedidos.*',
-                'c.nome as cliente_nome',
-                'r.nome as responsavel_nome'
-            )
-            .whereIn('pedidos.status', ['pendente', 'em_andamento', 'atrasado']);
-
-        // Cliente vê apenas seus pedidos
-        if (usuarioLogado.nivel_acesso === 'cliente') {
-            query = query.where('pedidos.cliente_id', usuarioLogado.id);
-        }
-
-        const pedidos = await query.orderBy('pedidos.created_at', 'desc');
-
-        return pedidos;
-    },
-
-    async entregasFinalizadas(usuarioLogado: any) {
-        let query = db('pedidos')
-            .leftJoin('usuarios as c', 'pedidos.cliente_id', 'c.id')
-            .leftJoin('usuarios as r', 'pedidos.responsavel_id', 'r.id')
-            .select(
-                'pedidos.*',
-                'c.nome as cliente_nome',
-                'r.nome as responsavel_nome'
-            )
-            .whereIn('pedidos.status', ['entregue', 'cancelado']);
-
-        // Cliente vê apenas seus pedidos
-        if (usuarioLogado.nivel_acesso === 'cliente') {
-            query = query.where('pedidos.cliente_id', usuarioLogado.id);
-        }
-
-        const entregas = await query.orderBy('pedidos.updated_at', 'desc');
-
-        return entregas;
-    },
-
-    async listarClientes() {
-        const clientes = await db('usuarios')
-            .leftJoin('pedidos', 'usuarios.id', 'pedidos.cliente_id')
-            .select(
-                'usuarios.id',
-                'usuarios.nome',
-                'usuarios.email',
-                'usuarios.ativo',
-                'usuarios.created_at'
-            )
-            .count('pedidos.id as total_pedidos')
-            .where('usuarios.nivel_acesso', 'cliente')
-            .groupBy('usuarios.id')
-            .orderBy('usuarios.created_at', 'desc');
-
-        return clientes;
-    }
-};
+    return {
+      pessoais,
+      globais: {
+        totalPedidos,
+        taxaConclusao,
+        tempoMedioEntrega,
+        pedidosAtrasados,
+        porResponsavel: porResponsavel as any[],
+        alertasInatividade: alertasInatividade as any[]
+      }
+    };
+  }
+}

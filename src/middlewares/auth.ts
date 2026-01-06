@@ -1,52 +1,64 @@
 import { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
+import { AuthService } from '../service/AuthService';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'sgam_secret_key_2024';
-
-export interface AuthRequest extends Request {
-    userId?: number;
-    userNivel?: string;
-    user?: { id: number; nivel_acesso: string };
+// Extender o tipo Request para incluir dados de autenticação
+declare global {
+  namespace Express {
+    interface Request {
+      body: {
+        auth?: {
+          usuarioId: number;
+          nivelAcesso: string;
+        };
+      };
+    }
+  }
 }
 
-// Middleware de autenticação - verifica se token é válido
-export const authMiddleware = (req: AuthRequest, res: Response, next: NextFunction) => {
-    const token = req.headers.authorization?.replace('Bearer ', '');
+export async function authMiddleware(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    // Por simplicidade, esperamos o usuarioId no header
+    // Em produção, isso seria um JWT token
+    const usuarioId = req.headers['x-usuario-id'];
 
-    if (!token) {
-        return res.status(401).json({ erro: 'Token não fornecido' });
+    if (!usuarioId) {
+      res.status(401).json({ 
+        erro: 'Autenticação necessária' 
+      });
+      return;
     }
 
-    try {
-        const decoded = jwt.verify(token, JWT_SECRET) as { id: number; nivel_acesso: string };
+    // Buscar usuário
+    const usuario = await AuthService.buscarPorId(parseInt(usuarioId as string));
 
-        // Injeta dados do usuário na requisição
-        req.userId = decoded.id;
-        req.userNivel = decoded.nivel_acesso;
-        req.user = { id: decoded.id, nivel_acesso: decoded.nivel_acesso };
-
-        next();
-    } catch (error) {
-        return res.status(401).json({ erro: 'Token inválido ou expirado' });
+    if (!usuario) {
+      res.status(401).json({ 
+        erro: 'Usuário não encontrado' 
+      });
+      return;
     }
-};
 
-// Middleware para verificar se é admin
-export const adminMiddleware = (req: AuthRequest, res: Response, next: NextFunction) => {
-    if (req.userNivel !== 'admin') {
-        return res.status(403).json({
-            erro: 'Acesso negado. Apenas administradores.'
-        });
+    if (!usuario.ativo) {
+      res.status(403).json({ 
+        erro: 'Conta desativada. Contate o administrador.' 
+      });
+      return;
     }
+
+    // Adicionar dados de autenticação ao body
+    req.body.auth = {
+      usuarioId: usuario.id,
+      nivelAcesso: usuario.nivel_acesso
+    };
+
     next();
-};
-
-// Middleware para verificar se é admin OU colaborador
-export const adminOuColaboradorMiddleware = (req: AuthRequest, res: Response, next: NextFunction) => {
-    if (req.userNivel !== 'admin' && req.userNivel !== 'colaborador') {
-        return res.status(403).json({
-            erro: 'Acesso negado. Apenas admin ou colaborador.'
-        });
-    }
-    next();
-};
+  } catch (error: any) {
+    res.status(500).json({ 
+      erro: 'Erro na autenticação' 
+    });
+  }
+}

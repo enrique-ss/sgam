@@ -1,143 +1,168 @@
-import { db } from '../database';
 import bcrypt from 'bcrypt';
+import pool from '../database';
+import { RowDataPacket, ResultSetHeader } from 'mysql2';
+import { Usuario } from './AuthService';
 
-export const UsuarioService = {
-    async listar() {
-        return await db('usuarios')
-            .select('id', 'nome', 'email', 'nivel_acesso', 'ativo', 'ultimo_login', 'created_at', 'updated_at')
-            .orderBy('created_at', 'desc');
-    },
-
-    async obter(id: number) {
-        const usuario = await db('usuarios')
-            .select('id', 'nome', 'email', 'nivel_acesso', 'ativo', 'ultimo_login', 'created_at', 'updated_at')
-            .where({ id })
-            .first();
-
-        if (!usuario) {
-            throw new Error('USUARIO_NAO_ENCONTRADO');
-        }
-
-        return usuario;
-    },
-
-    async criar(nome: string, email: string, senha: string, nivel_acesso: string) {
-        const niveisValidos = ['admin', 'colaborador', 'cliente'];
-        if (!niveisValidos.includes(nivel_acesso)) {
-            throw new Error('NIVEL_INVALIDO');
-        }
-
-        const emailExiste = await db('usuarios').where({ email }).first();
-        if (emailExiste) {
-            throw new Error('EMAIL_JA_CADASTRADO');
-        }
-
-        const senhaHash = await bcrypt.hash(senha, 10);
-
-        const [id] = await db('usuarios').insert({
-            nome,
-            email,
-            senha: senhaHash,
-            nivel_acesso,
-            ativo: true
-        });
-
-        return await this.obter(id);
-    },
-
-    async atualizar(id: number, dados: any, usuarioLogadoId: number, usuarioLogadoNivel: string) {
-        const usuarioExistente = await db('usuarios').where({ id }).first();
-
-        if (!usuarioExistente) {
-            throw new Error('USUARIO_NAO_ENCONTRADO');
-        }
-
-        // Verifica permissões
-        const podeAtualizar = usuarioLogadoNivel === 'admin' || id === usuarioLogadoId;
-        if (!podeAtualizar) {
-            throw new Error('SEM_PERMISSAO');
-        }
-
-        // Não pode alterar próprio nível
-        if (id === usuarioLogadoId && dados.nivel_acesso !== undefined) {
-            throw new Error('NAO_PODE_ALTERAR_PROPRIO_NIVEL');
-        }
-
-        // Não pode desativar a si mesmo
-        if (id === usuarioLogadoId && dados.ativo === false) {
-            throw new Error('NAO_PODE_DESATIVAR_SI_MESMO');
-        }
-
-        const updateData: any = { updated_at: db.fn.now() };
-
-        if (dados.nome) updateData.nome = dados.nome;
-
-        if (dados.email) {
-            const emailEmUso = await db('usuarios')
-                .where({ email: dados.email })
-                .whereNot({ id })
-                .first();
-
-            if (emailEmUso) {
-                throw new Error('EMAIL_JA_CADASTRADO');
-            }
-
-            updateData.email = dados.email;
-        }
-
-        if (dados.senha) {
-            updateData.senha = await bcrypt.hash(dados.senha, 10);
-        }
-
-        // Apenas admin altera nível e status
-        if (usuarioLogadoNivel === 'admin') {
-            if (dados.nivel_acesso) {
-                const niveisValidos = ['admin', 'colaborador', 'cliente'];
-                if (!niveisValidos.includes(dados.nivel_acesso)) {
-                    throw new Error('NIVEL_INVALIDO');
-                }
-                updateData.nivel_acesso = dados.nivel_acesso;
-            }
-
-            if (dados.ativo !== undefined) {
-                updateData.ativo = dados.ativo;
-            }
-        } else {
-            // Usuário comum tentando alterar nível/status
-            if (dados.nivel_acesso !== undefined || dados.ativo !== undefined) {
-                throw new Error('APENAS_ADMIN_ALTERA_NIVEL_STATUS');
-            }
-        }
-
-        await db('usuarios').where({ id }).update(updateData);
-
-        return await this.obter(id);
-    },
-
-    async deletar(id: number, usuarioLogadoId: number) {
-        const usuario = await db('usuarios').where({ id }).first();
-
-        if (!usuario) {
-            throw new Error('USUARIO_NAO_ENCONTRADO');
-        }
-
-        // Não deleta a si mesmo
-        if (id === usuarioLogadoId) {
-            throw new Error('NAO_PODE_DELETAR_SI_MESMO');
-        }
-
-        // Não deleta se tiver pedidos vinculados
-        const temPedidos = await db('pedidos')
-            .where('cliente_id', id)
-            .orWhere('responsavel_id', id)
-            .first();
-
-        if (temPedidos) {
-            throw new Error('USUARIO_COM_PEDIDOS_VINCULADOS');
-        }
-
-        await db('usuarios').where({ id }).del();
-
-        return usuario.nome;
+export class UsuarioService {
+  // Listar clientes (apenas para admin)
+  static async listarClientes(usuarioLogadoId: number, nivelAcesso: string): Promise<Usuario[]> {
+    if (nivelAcesso !== 'admin') {
+      throw new Error('Apenas administradores podem listar clientes');
     }
-};
+
+    const [rows] = await pool.query<RowDataPacket[]>(
+      'SELECT * FROM usuarios WHERE nivel_acesso = "cliente" ORDER BY nome'
+    );
+
+    return rows as Usuario[];
+  }
+
+  // Listar equipe (colaboradores e admins - apenas para admin)
+  static async listarEquipe(usuarioLogadoId: number, nivelAcesso: string): Promise<Usuario[]> {
+    if (nivelAcesso !== 'admin') {
+      throw new Error('Apenas administradores podem listar a equipe');
+    }
+
+    const [rows] = await pool.query<RowDataPacket[]>(
+      `SELECT * FROM usuarios 
+       WHERE nivel_acesso IN ('colaborador', 'admin') 
+       ORDER BY nome`
+    );
+
+    return rows as Usuario[];
+  }
+
+  // Editar perfil próprio (nome e senha)
+  static async editarPerfil(
+    usuarioId: number,
+    nome?: string,
+    senhaAtual?: string,
+    senhaNova?: string
+  ): Promise<void> {
+    const updates: string[] = [];
+    const values: any[] = [];
+
+    // Atualizar nome se fornecido
+    if (nome) {
+      updates.push('nome = ?');
+      values.push(nome);
+    }
+
+    // Atualizar senha se fornecida
+    if (senhaAtual && senhaNova) {
+      // Buscar usuário para verificar senha atual
+      const [rows] = await pool.query<RowDataPacket[]>(
+        'SELECT senha FROM usuarios WHERE id = ?',
+        [usuarioId]
+      );
+
+      if (rows.length === 0) {
+        throw new Error('Usuário não encontrado');
+      }
+
+      const usuario = rows[0];
+      const senhaCorreta = await bcrypt.compare(senhaAtual, usuario.senha);
+
+      if (!senhaCorreta) {
+        throw new Error('Senha atual incorreta');
+      }
+
+      const senhaHash = await bcrypt.hash(senhaNova, 10);
+      updates.push('senha = ?');
+      values.push(senhaHash);
+    }
+
+    if (updates.length === 0) {
+      throw new Error('Nenhuma alteração fornecida');
+    }
+
+    values.push(usuarioId);
+
+    await pool.query(
+      `UPDATE usuarios SET ${updates.join(', ')} WHERE id = ?`,
+      values
+    );
+  }
+
+  // Editar usuário (ativo e nivel_acesso - apenas admin)
+  static async editarUsuario(
+    adminId: number,
+    nivelAcessoAdmin: string,
+    usuarioId: number,
+    ativo?: boolean,
+    nivelAcesso?: 'admin' | 'colaborador' | 'cliente'
+  ): Promise<void> {
+    if (nivelAcessoAdmin !== 'admin') {
+      throw new Error('Apenas administradores podem editar usuários');
+    }
+
+    // Admin não pode alterar próprio nivel_acesso
+    if (adminId === usuarioId && nivelAcesso) {
+      throw new Error('Você não pode alterar seu próprio nível de acesso');
+    }
+
+    // Admin não pode desativar própria conta
+    if (adminId === usuarioId && ativo === false) {
+      throw new Error('Você não pode desativar sua própria conta');
+    }
+
+    // Verificar se colaborador tem pedidos em aberto ao desativar
+    if (ativo === false) {
+      const [pedidos] = await pool.query<RowDataPacket[]>(
+        `SELECT COUNT(*) as total 
+         FROM pedidos 
+         WHERE responsavel_id = ? 
+         AND status IN ('em_andamento', 'atrasado')`,
+        [usuarioId]
+      );
+
+      if (pedidos[0].total > 0) {
+        throw new Error(
+          `Este usuário tem ${pedidos[0].total} pedido(s) em aberto. ` +
+          `Deseja realmente desativar?`
+        );
+      }
+    }
+
+    const updates: string[] = [];
+    const values: any[] = [];
+
+    if (ativo !== undefined) {
+      updates.push('ativo = ?');
+      values.push(ativo);
+    }
+
+    if (nivelAcesso) {
+      updates.push('nivel_acesso = ?');
+      values.push(nivelAcesso);
+    }
+
+    if (updates.length === 0) {
+      throw new Error('Nenhuma alteração fornecida');
+    }
+
+    values.push(usuarioId);
+
+    await pool.query(
+      `UPDATE usuarios SET ${updates.join(', ')} WHERE id = ?`,
+      values
+    );
+  }
+
+  // Buscar colaboradores/admins para atribuição (apenas admin)
+  static async listarResponsaveisDisponiveis(nivelAcesso: string): Promise<Usuario[]> {
+    if (nivelAcesso !== 'admin') {
+      throw new Error('Apenas administradores podem listar responsáveis');
+    }
+
+    const [rows] = await pool.query<RowDataPacket[]>(
+      `SELECT id, nome, email, nivel_acesso 
+       FROM usuarios 
+       WHERE nivel_acesso IN ('colaborador', 'admin') 
+       AND ativo = true 
+       ORDER BY nome`
+    );
+
+    return rows as Usuario[];
+  }
+}

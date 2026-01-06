@@ -1,211 +1,215 @@
-import { Response } from 'express';
-import { AuthRequest } from '../middlewares/auth';
+import { Request, Response } from 'express';
 import { PedidoService } from '../service/PedidoService';
 
-export const PedidoController = {
-    async listar(req: AuthRequest, res: Response) {
-        try {
-            const usuarioLogado = req.user!;
-            const filtros = req.query;
+export class PedidoController {
+  // POST /api/pedidos/cliente
+  static async criarPedidoCliente(req: Request, res: Response): Promise<void> {
+    try {
+      const { usuarioId } = req.body.auth;
+      const dados = req.body;
 
-            const pedidos = await PedidoService.listar(usuarioLogado, filtros);
+      const pedido = await PedidoService.criarPedidoCliente(usuarioId, dados);
 
-            res.json({
-                pedidos,
-                total: pedidos.length
-            });
-        } catch (error) {
-            console.error('Erro ao listar:', error);
-            res.status(500).json({ erro: 'Erro ao listar pedidos' });
-        }
-    },
-
-    async obter(req: AuthRequest, res: Response) {
-        try {
-            const { id } = req.params;
-            const usuarioLogado = req.user!;
-
-            const resultado = await PedidoService.obter(parseInt(id), usuarioLogado);
-
-            res.json(resultado);
-        } catch (error: any) {
-            console.error('Erro ao obter:', error);
-
-            if (error.message === 'PEDIDO_NAO_ENCONTRADO') {
-                return res.status(404).json({ erro: 'Pedido não encontrado' });
-            }
-
-            if (error.message === 'SEM_PERMISSAO') {
-                return res.status(403).json({ erro: 'Sem permissão' });
-            }
-
-            res.status(500).json({ erro: 'Erro ao obter pedido' });
-        }
-    },
-
-    async criar(req: AuthRequest, res: Response) {
-        try {
-            const { titulo } = req.body;
-            const usuarioLogado = req.user!;
-
-            if (!titulo) {
-                return res.status(400).json({ erro: 'Título obrigatório' });
-            }
-
-            const pedido = await PedidoService.criar(req.body, usuarioLogado);
-
-            res.status(201).json({
-                mensagem: 'Pedido criado. Aguardando aceite de colaborador.',
-                pedido
-            });
-        } catch (error: any) {
-            console.error('Erro ao criar:', error);
-
-            if (error.message === 'ADMIN_COLABORADOR_DEVE_ESPECIFICAR_CLIENTE') {
-                return res.status(400).json({
-                    erro: 'Admin/Colaborador deve especificar cliente_id'
-                });
-            }
-
-            if (error.message === 'CLIENTE_NAO_ENCONTRADO') {
-                return res.status(404).json({ erro: 'Cliente não encontrado' });
-            }
-
-            res.status(500).json({ erro: 'Erro ao criar pedido' });
-        }
-    },
-
-    async atualizar(req: AuthRequest, res: Response) {
-        try {
-            const { id } = req.params;
-            const usuarioLogado = req.user!;
-
-            const pedido = await PedidoService.atualizar(parseInt(id), req.body, usuarioLogado);
-
-            res.json({
-                mensagem: 'Pedido atualizado',
-                pedido
-            });
-        } catch (error: any) {
-            console.error('Erro ao atualizar:', error);
-
-            if (error.message === 'PEDIDO_NAO_ENCONTRADO') {
-                return res.status(404).json({ erro: 'Pedido não encontrado' });
-            }
-
-            if (error.message === 'SEM_PERMISSAO') {
-                return res.status(403).json({ erro: 'Sem permissão' });
-            }
-
-            if (error.message === 'CLIENTE_NAO_PODE_ALTERAR_STATUS_RESPONSAVEL_PRIORIDADE') {
-                return res.status(403).json({
-                    erro: 'Cliente não pode alterar status, responsável ou prioridade'
-                });
-            }
-
-            if (error.message === 'STATUS_INVALIDO') {
-                return res.status(400).json({ erro: 'Status inválido' });
-            }
-
-            if (error.message === 'PRIORIDADE_INVALIDA') {
-                return res.status(400).json({ erro: 'Prioridade inválida' });
-            }
-
-            res.status(500).json({ erro: 'Erro ao atualizar pedido' });
-        }
-    },
-
-    async deletar(req: AuthRequest, res: Response) {
-        try {
-            const { id } = req.params;
-            const usuarioLogado = req.user!;
-
-            await PedidoService.deletar(parseInt(id), usuarioLogado);
-
-            res.json({ mensagem: 'Pedido deletado' });
-        } catch (error: any) {
-            console.error('Erro ao deletar:', error);
-
-            if (error.message === 'PEDIDO_NAO_ENCONTRADO') {
-                return res.status(404).json({ erro: 'Pedido não encontrado' });
-            }
-
-            if (error.message === 'SEM_PERMISSAO') {
-                return res.status(403).json({ erro: 'Sem permissão' });
-            }
-
-            if (error.message === 'NAO_PODE_CANCELAR_PEDIDO_ENTREGUE') {
-                return res.status(400).json({
-                    erro: 'Não é possível cancelar pedido entregue'
-                });
-            }
-
-            if (error.message === 'COLABORADOR_SO_DELETA_SEUS_PEDIDOS') {
-                return res.status(403).json({
-                    erro: 'Você só pode deletar pedidos que você é responsável'
-                });
-            }
-
-            res.status(500).json({ erro: 'Erro ao deletar pedido' });
-        }
-    },
-
-    async criarDemanda(req: AuthRequest, res: Response) {
-        try {
-            const { pedido_id } = req.params;
-            const { titulo } = req.body;
-            const usuarioLogado = req.user!;
-
-            if (!titulo) {
-                return res.status(400).json({ erro: 'Título obrigatório' });
-            }
-
-            const demanda = await PedidoService.criarDemanda(parseInt(pedido_id), req.body, usuarioLogado);
-
-            res.status(201).json({
-                mensagem: 'Demanda criada',
-                demanda
-            });
-        } catch (error: any) {
-            console.error('Erro ao criar demanda:', error);
-
-            if (error.message === 'PEDIDO_NAO_ENCONTRADO') {
-                return res.status(404).json({ erro: 'Pedido não encontrado' });
-            }
-
-            res.status(500).json({ erro: 'Erro ao criar demanda' });
-        }
-    },
-
-    async atualizarDemanda(req: AuthRequest, res: Response) {
-        try {
-            const { id } = req.params;
-            const usuarioLogado = req.user!;
-
-            const demanda = await PedidoService.atualizarDemanda(parseInt(id), req.body, usuarioLogado);
-
-            res.json({
-                mensagem: 'Demanda atualizada',
-                demanda
-            });
-        } catch (error: any) {
-            console.error('Erro ao atualizar demanda:', error);
-
-            if (error.message === 'DEMANDA_NAO_ENCONTRADA') {
-                return res.status(404).json({ erro: 'Demanda não encontrada' });
-            }
-
-            if (error.message === 'COLABORADOR_SO_ATUALIZA_SUAS_DEMANDAS') {
-                return res.status(403).json({
-                    erro: 'Você só pode atualizar suas demandas'
-                });
-            }
-
-            if (error.message === 'STATUS_DEMANDA_INVALIDO') {
-                return res.status(400).json({ erro: 'Status inválido' });
-            }
-
-            res.status(500).json({ erro: 'Erro ao atualizar demanda' });
-        }
+      res.status(201).json({
+        mensagem: 'Pedido criado com sucesso',
+        pedido
+      });
+    } catch (error: any) {
+      res.status(400).json({ 
+        erro: error.message 
+      });
     }
-};
+  }
+
+  // POST /api/pedidos/colaborador
+  static async criarPedidoColaborador(req: Request, res: Response): Promise<void> {
+    try {
+      const { usuarioId, nivelAcesso } = req.body.auth;
+      const dados = req.body;
+
+      const pedido = await PedidoService.criarPedidoColaborador(
+        usuarioId,
+        nivelAcesso,
+        dados
+      );
+
+      res.status(201).json({
+        mensagem: 'Pedido criado com sucesso',
+        pedido
+      });
+    } catch (error: any) {
+      res.status(400).json({ 
+        erro: error.message 
+      });
+    }
+  }
+
+  // GET /api/pedidos/pendentes
+  static async listarPendentes(req: Request, res: Response): Promise<void> {
+    try {
+      const { nivelAcesso } = req.body.auth;
+
+      const pedidos = await PedidoService.listarPendentes(nivelAcesso);
+
+      res.status(200).json(pedidos);
+    } catch (error: any) {
+      res.status(403).json({ 
+        erro: error.message 
+      });
+    }
+  }
+
+  // GET /api/pedidos/meus (cliente)
+  static async listarMeusPedidosCliente(req: Request, res: Response): Promise<void> {
+    try {
+      const { usuarioId } = req.body.auth;
+
+      const pedidos = await PedidoService.listarMeusPedidosCliente(usuarioId);
+
+      res.status(200).json(pedidos);
+    } catch (error: any) {
+      res.status(500).json({ 
+        erro: error.message 
+      });
+    }
+  }
+
+  // GET /api/pedidos/meus (colaborador)
+  static async listarMeusPedidosColaborador(req: Request, res: Response): Promise<void> {
+    try {
+      const { usuarioId } = req.body.auth;
+
+      const pedidos = await PedidoService.listarMeusPedidosColaborador(usuarioId);
+
+      res.status(200).json(pedidos);
+    } catch (error: any) {
+      res.status(500).json({ 
+        erro: error.message 
+      });
+    }
+  }
+
+  // GET /api/pedidos/todos (admin)
+  static async listarTodosPedidos(req: Request, res: Response): Promise<void> {
+    try {
+      const { nivelAcesso } = req.body.auth;
+
+      const pedidos = await PedidoService.listarTodosPedidos(nivelAcesso);
+
+      res.status(200).json(pedidos);
+    } catch (error: any) {
+      res.status(403).json({ 
+        erro: error.message 
+      });
+    }
+  }
+
+  // PUT /api/pedidos/:id/assumir
+  static async assumirPedido(req: Request, res: Response): Promise<void> {
+    try {
+      const { usuarioId, nivelAcesso } = req.body.auth;
+      const pedidoId = parseInt(req.params.id);
+      const { prioridade } = req.body;
+
+      if (isNaN(pedidoId)) {
+        res.status(400).json({ 
+          erro: 'ID inválido' 
+        });
+        return;
+      }
+
+      if (!prioridade) {
+        res.status(400).json({ 
+          erro: 'Prioridade é obrigatória' 
+        });
+        return;
+      }
+
+      await PedidoService.assumirPedido(usuarioId, nivelAcesso, pedidoId, prioridade);
+
+      res.status(200).json({
+        mensagem: 'Pedido assumido com sucesso'
+      });
+    } catch (error: any) {
+      res.status(400).json({ 
+        erro: error.message 
+      });
+    }
+  }
+
+  // PUT /api/pedidos/:id/concluir
+  static async concluirPedido(req: Request, res: Response): Promise<void> {
+    try {
+      const { usuarioId, nivelAcesso } = req.body.auth;
+      const pedidoId = parseInt(req.params.id);
+
+      if (isNaN(pedidoId)) {
+        res.status(400).json({ 
+          erro: 'ID inválido' 
+        });
+        return;
+      }
+
+      await PedidoService.concluirPedido(usuarioId, nivelAcesso, pedidoId);
+
+      res.status(200).json({
+        mensagem: 'Pedido concluído com sucesso'
+      });
+    } catch (error: any) {
+      res.status(400).json({ 
+        erro: error.message 
+      });
+    }
+  }
+
+  // PUT /api/pedidos/:id/cancelar
+  static async cancelarPedido(req: Request, res: Response): Promise<void> {
+    try {
+      const { usuarioId, nivelAcesso } = req.body.auth;
+      const pedidoId = parseInt(req.params.id);
+
+      if (isNaN(pedidoId)) {
+        res.status(400).json({ 
+          erro: 'ID inválido' 
+        });
+        return;
+      }
+
+      await PedidoService.cancelarPedido(usuarioId, nivelAcesso, pedidoId);
+
+      res.status(200).json({
+        mensagem: 'Pedido cancelado com sucesso'
+      });
+    } catch (error: any) {
+      res.status(400).json({ 
+        erro: error.message 
+      });
+    }
+  }
+
+  // PUT /api/pedidos/:id (admin)
+  static async editarPedido(req: Request, res: Response): Promise<void> {
+    try {
+      const { nivelAcesso } = req.body.auth;
+      const pedidoId = parseInt(req.params.id);
+      const dados = req.body;
+
+      if (isNaN(pedidoId)) {
+        res.status(400).json({ 
+          erro: 'ID inválido' 
+        });
+        return;
+      }
+
+      await PedidoService.editarPedido(nivelAcesso, pedidoId, dados);
+
+      res.status(200).json({
+        mensagem: 'Pedido atualizado com sucesso'
+      });
+    } catch (error: any) {
+      res.status(403).json({ 
+        erro: error.message 
+      });
+    }
+  }
+}

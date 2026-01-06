@@ -1,82 +1,107 @@
-import { db } from '../database';
 import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
+import pool from '../database';
+import { RowDataPacket, ResultSetHeader } from 'mysql2';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'sgam_secret_key_2024';
+export interface Usuario {
+  id: number;
+  nome: string;
+  email: string;
+  senha: string;
+  nivel_acesso: 'admin' | 'colaborador' | 'cliente';
+  ativo: boolean;
+  ultimo_login: Date | null;
+  criado_em: Date;
+  atualizado_em: Date;
+}
 
-export const AuthService = {
-    async registrar(nome: string, email: string, senha: string) {
-        const existente = await db('usuarios').where({ email }).first();
-        if (existente) {
-            throw new Error('EMAIL_JA_CADASTRADO');
-        }
+export class AuthService {
+  // Cadastrar novo usuário
+  static async cadastrar(nome: string, email: string, senha: string): Promise<Usuario> {
+    // Verificar se email já existe
+    const [rows] = await pool.query<RowDataPacket[]>(
+      'SELECT id FROM usuarios WHERE email = ?',
+      [email]
+    );
 
-        const senhaHash = await bcrypt.hash(senha, 10);
-
-        const [id] = await db('usuarios').insert({
-            nome,
-            email,
-            senha: senhaHash,
-            nivel_acesso: 'cliente',
-            ativo: true
-        });
-
-        const usuario = await db('usuarios')
-            .select('id', 'nome', 'email', 'nivel_acesso', 'ativo')
-            .where({ id })
-            .first();
-
-        const token = jwt.sign(
-            { id: usuario.id, nivel_acesso: usuario.nivel_acesso },
-            JWT_SECRET,
-            { expiresIn: '24h' }
-        );
-
-        return { token, usuario };
-    },
-
-    async login(email: string, senha: string) {
-        const usuario = await db('usuarios').where({ email }).first();
-
-        if (!usuario) {
-            throw new Error('CREDENCIAIS_INVALIDAS');
-        }
-
-        const senhaValida = await bcrypt.compare(senha, usuario.senha);
-        if (!senhaValida) {
-            throw new Error('CREDENCIAIS_INVALIDAS');
-        }
-
-        // Verifica se está ativo
-        if (!usuario.ativo) {
-            throw new Error('CONTA_DESATIVADA');
-        }
-
-        // Atualiza último login
-        await db('usuarios')
-            .where({ id: usuario.id })
-            .update({ ultimo_login: db.fn.now() });
-
-        const token = jwt.sign(
-            { id: usuario.id, nivel_acesso: usuario.nivel_acesso },
-            JWT_SECRET,
-            { expiresIn: '24h' }
-        );
-
-        const { senha: _, ...usuarioSemSenha } = usuario;
-
-        return { token, usuario: usuarioSemSenha };
-    },
-
-    async verificarInatividade() {
-        // Desativa colaboradores inativos há mais de 30 dias
-        const trintaDiasAtras = new Date();
-        trintaDiasAtras.setDate(trintaDiasAtras.getDate() - 30);
-
-        await db('usuarios')
-            .where('nivel_acesso', 'colaborador')
-            .where('ativo', true)
-            .where('ultimo_login', '<', trintaDiasAtras)
-            .update({ ativo: false });
+    if (rows.length > 0) {
+      throw new Error('Email já cadastrado');
     }
-};
+
+    // Criptografar senha
+    const senhaHash = await bcrypt.hash(senha, 10);
+
+    // Inserir usuário (sempre como cliente, sempre ativo)
+    const [result] = await pool.query<ResultSetHeader>(
+      `INSERT INTO usuarios (nome, email, senha, nivel_acesso, ativo) 
+       VALUES (?, ?, ?, 'cliente', true)`,
+      [nome, email, senhaHash]
+    );
+
+    // Buscar usuário criado
+    const [usuario] = await pool.query<RowDataPacket[]>(
+      'SELECT * FROM usuarios WHERE id = ?',
+      [result.insertId]
+    );
+
+    return usuario[0] as Usuario;
+  }
+
+  // Login
+  static async login(email: string, senha: string): Promise<Usuario> {
+    // Buscar usuário por email
+    const [rows] = await pool.query<RowDataPacket[]>(
+      'SELECT * FROM usuarios WHERE email = ?',
+      [email]
+    );
+
+    if (rows.length === 0) {
+      throw new Error('Email ou senha incorretos');
+    }
+
+    const usuario = rows[0] as Usuario;
+
+    // Verificar se conta está ativa
+    if (!usuario.ativo) {
+      throw new Error('Sua conta está desativada. Contate o administrador.');
+    }
+
+    // Verificar senha
+    const senhaCorreta = await bcrypt.compare(senha, usuario.senha);
+    if (!senhaCorreta) {
+      throw new Error('Email ou senha incorretos');
+    }
+
+    // Atualizar ultimo_login
+    await pool.query(
+      'UPDATE usuarios SET ultimo_login = CURRENT_TIMESTAMP WHERE id = ?',
+      [usuario.id]
+    );
+
+    return usuario;
+  }
+
+  // Verificar inatividade de colaboradores (job automático)
+  static async verificarInatividade(): Promise<void> {
+    const trintaDiasAtras = new Date();
+    trintaDiasAtras.setDate(trintaDiasAtras.getDate() - 30);
+
+    await pool.query(
+      `UPDATE usuarios 
+       SET ativo = false 
+       WHERE nivel_acesso = 'colaborador' 
+       AND ultimo_login < ? 
+       AND ativo = true`,
+      [trintaDiasAtras]
+    );
+  }
+
+  // Buscar usuário por ID
+  static async buscarPorId(id: number): Promise<Usuario | null> {
+    const [rows] = await pool.query<RowDataPacket[]>(
+      'SELECT * FROM usuarios WHERE id = ?',
+      [id]
+    );
+
+    return rows.length > 0 ? (rows[0] as Usuario) : null;
+  }
+}
