@@ -56,7 +56,7 @@ Percebi que o problema não era técnico, era de **planejamento**. Parei de codi
 
 ---
 
-## 📋 PASSO 2: DEFINIR ESTRUTURA DAS TABELAS (CORRIGIDO)
+## 📋 PASSO 2: DEFINIR ESTRUTURA DAS TABELAS
 
 ### **📦 Tabela: USUARIOS**
 
@@ -274,7 +274,7 @@ Cancelar        → qualquer status → 'cancelado'
 
 ---
 
-## 🚦 PASSO 3: DEFINIR FLUXO DE ESTADOS (CORRIGIDO)
+## 🚦 PASSO 3: DEFINIR FLUXO DE ESTADOS
 
 ### **📊 Fluxo de Status**
 
@@ -315,7 +315,7 @@ Para cada pedido:
 
 ---
 
-## 🔗 PASSO 4: ESTABELECER RELACIONAMENTOS (CORRIGIDO)
+## 🔗 PASSO 4: ESTABELECER RELACIONAMENTOS
 
 ### **Por que Foreign Keys?**
 
