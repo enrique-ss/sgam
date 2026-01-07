@@ -51,116 +51,117 @@ Recomendo ler ela antes de mexer no código!
 
 ```
 sgam/
-├── docs/
-│   └── MODELAGEM.md              # Documentação completa da modelagem
+├── docs/                         # Documentação técnica do projeto
+│   └── MODELAGEM.md              # Diagrama ER, regras de negócio e especificação do banco
 │
-├── public/
-│   ├── index.html                # Interface web
-│   ├── script.js                 # Lógica do frontend
-│   └── style.css                 # Estilos
+├── public/                       # Arquivos estáticos servidos pelo navegador
+│   ├── index.html                # Interface web principal do sistema
+│   ├── script.js                 # Lógica client-side (requisições, manipulação DOM)
+│   └── style.css                 # Estilos visuais da interface
 │
-├── src/
-│   ├── config/                   # Configurações do sistema
-│   │   ├── database.ts           # Configuração do banco de dados
-│   │   ├── env.ts                # Variáveis de ambiente
-│   │   └── express.ts            # Configuração do Express
+├── src/                          # Código-fonte TypeScript do backend
+│   ├── config/                   # Configurações centralizadas do sistema
+│   │   ├── database.ts           # Pool de conexões SQLite, configuração do Knex
+│   │   ├── env.ts                # Carregamento e validação de variáveis de ambiente
+│   │   └── express.ts            # Configuração do servidor (CORS, parsers, rotas)
 │   │
-│   ├── constants/                # Constantes do sistema
-│   │   ├── mensagens.ts          # Mensagens de erro/sucesso
-│   │   ├── nivelAcesso.ts        # Níveis de acesso (cliente, colaborador, admin)
-│   │   └── statusPedido.ts       # Status dos pedidos
+│   ├── constants/                # Valores fixos utilizados em todo o sistema
+│   │   ├── mensagens.ts          # Mensagens padronizadas de erro, sucesso e validação
+│   │   ├── nivelAcesso.ts        # Enum dos níveis (CLIENTE=1, COLABORADOR=2, ADMIN=3)
+│   │   └── statusPedido.ts       # Enum dos status (ABERTO, EM_ANDAMENTO, CONCLUIDO, etc)
 │   │
-│   ├── controllers/              # Controladores da API
-│   │   ├── AuthController.ts     # Autenticação e login
-│   │   ├── DashboardController.ts # Estatísticas e dashboard
-│   │   ├── PedidoController.ts   # Gerenciamento de pedidos
-│   │   └── UsuarioController.ts  # Gerenciamento de usuários
+│   ├── controllers/                # Camada de controle (recebe requisições HTTP)
+│   │   ├── AuthController.ts       # Login, logout, verificação de sessão
+│   │   ├── DashboardController.ts  # Retorna métricas agregadas (total pedidos, atrasados)
+│   │   ├── PedidoController.ts     # CRUD de pedidos e mudanças de status
+│   │   └── UsuarioController.ts    # CRUD de usuários (apenas admins podem criar/editar)
 │   │
-│   ├── database/                 # Migrations e seeds
-│   │   ├── migrations/           # Criação das tabelas
-│   │   │   ├── 001_create_usuarios.ts
-│   │   │   ├── 002_create_pedidos.ts
-│   │   │   └── 003_create_pedidos_status_log.ts
-│   │   └── seeds/                # Dados iniciais
-│   │       ├── usuarios.ts
-│   │       └── pedidos.ts
+│   ├── database/                                 # Scripts de gerenciamento do banco de dados
+│   │   ├── migrations/                           # Versionamento do schema (cria tabelas)
+│   │   │   ├── 001_create_usuarios.ts            # Tabela usuarios (id, nome, email, senha_hash, nivel_acesso)
+│   │   │   ├── 002_create_pedidos.ts             # Tabela pedidos (id, titulo, descricao, status, prazo, cliente_id, colaborador_id)
+│   │   │   └── 003_create_pedidos_status_log.ts  # Tabela de auditoria (rastreia mudanças de status)
+│   │   └── seeds/                                # Dados iniciais para desenvolvimento/testes
+│   │       ├── usuarios.ts                       # Cria usuários padrão (admin, colaborador, cliente)
+│   │       └── pedidos.ts                        # Cria pedidos de exemplo para popular o sistema
 │   │
 │   ├── dto/                      # Data Transfer Objects (validação de entrada)
-│   │   ├── CreatePedidoDto.ts
-│   │   ├── CreateUsuarioDto.ts
-│   │   ├── LoginDto.ts
-│   │   ├── UpdateUsuarioDto.ts
-│   │   └── index.ts              # Barrel export
+│   │   ├── CreatePedidoDto.ts    # Valida campos obrigatórios ao criar pedido
+│   │   ├── CreateUsuarioDto.ts   # Valida email, senha forte, nível de acesso
+│   │   ├── LoginDto.ts           # Valida credenciais de login (email + senha)
+│   │   ├── UpdateUsuarioDto.ts   # Valida campos opcionais ao atualizar usuário
+│   │   └── index.ts              # Exporta todos os DTOs em um único import
 │   │
-│   ├── exceptions/               # Erros customizados
-│   │   ├── AppError.ts           # Erro base
-│   │   ├── NotFoundError.ts      # 404
-│   │   ├── UnauthorizedError.ts  # 401
-│   │   ├── ValidationError.ts    # 400
-│   │   └── index.ts              # Barrel export
+│   ├── exceptions/               # Classes de erro customizadas
+│   │   ├── AppError.ts           # Classe base (status HTTP + mensagem)
+│   │   ├── NotFoundError.ts      # Erro 404 (recurso não encontrado)
+│   │   ├── UnauthorizedError.ts  # Erro 401 (não autenticado ou sem permissão)
+│   │   ├── ValidationError.ts    # Erro 400 (dados inválidos)
+│   │   └── index.ts              # Exporta todos os erros em um único import
 │   │
-│   ├── middlewares/              # Middlewares do Express
-│   │   ├── auth.ts               # Autenticação JWT
-│   │   ├── errorHandler.ts       # Tratamento de erros
-│   │   ├── logger.ts             # Logs de requisições
-│   │   └── validation.ts         # Validação de dados
+│   ├── middlewares/              # Funções executadas antes dos controllers
+│   │   ├── auth.ts               # Valida JWT e adiciona usuário ao request
+│   │   ├── errorHandler.ts       # Captura erros e retorna JSON padronizado
+│   │   ├── logger.ts             # Loga todas as requisições (método, URL, tempo)
+│   │   └── validation.ts         # Valida corpo da requisição contra DTOs
 │   │
-│   ├── models/                   # Modelos do banco de dados
-│   │   ├── Usuario.ts            # Model de usuários
-│   │   ├── Pedido.ts             # Model de pedidos
-│   │   ├── PedidoStatusLog.ts    # Model de histórico
-│   │   └── index.ts              # Barrel export
+│   ├── models/                   # Representação das tabelas do banco
+│   │   ├── Usuario.ts            # Model de usuários (métodos CRUD + autenticação)
+│   │   ├── Pedido.ts             # Model de pedidos (métodos CRUD + queries complexas)
+│   │   ├── PedidoStatusLog.ts    # Model de histórico (registra quem mudou o status e quando)
+│   │   └── index.ts              # Exporta todos os models em um único import
 │   │
-│   ├── routes/                   # Rotas da API REST
-│   │   ├── AuthRoutes.ts         # Rotas de autenticação
-│   │   ├── DashboardRoutes.ts    # Rotas de dashboard
-│   │   ├── PedidoRoutes.ts       # Rotas de pedidos
-│   │   ├── UsuarioRoutes.ts      # Rotas de usuários
-│   │   └── index.ts              # Centralizador de rotas
+│   ├── routes/                   # Definição dos endpoints da API REST
+│   │   ├── AuthRoutes.ts         # POST /auth/login, POST /auth/logout, GET /auth/me
+│   │   ├── DashboardRoutes.ts    # GET /dashboard (métricas gerais do sistema)
+│   │   ├── PedidoRoutes.ts       # GET/POST/PUT/DELETE /pedidos, PATCH /pedidos/:id/status
+│   │   ├── UsuarioRoutes.ts      # GET/POST/PUT/DELETE /usuarios (apenas admins)
+│   │   └── index.ts              # Agrupa todas as rotas sob o prefixo /api
 │   │
-│   ├── services/                 # Lógica de negócio
-│   │   ├── AuthService.ts        # Serviço de autenticação
-│   │   ├── CronService.ts        # Jobs automáticos (atraso, inatividade)
-│   │   ├── DashboardService.ts   # Serviço de estatísticas
-│   │   ├── PedidoService.ts      # Serviço de pedidos
-│   │   └── UsuarioService.ts     # Serviço de usuários
+│   ├── services/                 # Lógica de negócio (regras complexas)
+│   │   ├── AuthService.ts        # Gera JWT, verifica senha, valida tokens
+│   │   ├── CronService.ts        # Jobs automáticos (marca pedidos atrasados, notifica inatividade)
+│   │   ├── DashboardService.ts   # Calcula estatísticas agregadas do banco
+│   │   ├── PedidoService.ts      # Regras de negócio (transição de status, validações)
+│   │   └── UsuarioService.ts     # Regras de negócio (hash de senha, validação de email)
 │   │
-│   ├── types/                    # Tipos TypeScript
-│   │   ├── Auth.types.ts         # Tipos de autenticação
-│   │   ├── Pedido.types.ts       # Tipos de pedidos
-│   │   ├── Usuario.types.ts      # Tipos de usuários
-│   │   ├── express.d.ts          # Extensões do Express
-│   │   └── index.ts              # Barrel export
+│   ├── types/                    # Definições TypeScript customizadas
+│   │   ├── Auth.types.ts         # Tipos do payload JWT, sessão, token
+│   │   ├── Pedido.types.ts       # Interface de pedido, filtros, ordenação
+│   │   ├── Usuario.types.ts      # Interface de usuário (com e sem senha)
+│   │   ├── express.d.ts          # Extende Request do Express (adiciona user, auth)
+│   │   └── index.ts              # Exporta todos os tipos em um único import
 │   │
-│   ├── utils/                    # Funções auxiliares
-│   │   ├── date.ts               # Formatação de datas
-│   │   ├── jwt.ts                # Geração e validação de JWT
-│   │   ├── password.ts           # Hash e comparação de senhas
-│   │   ├── validator.ts          # Validações customizadas
-│   │   └── index.ts              # Barrel export
+│   ├── utils/                    # Funções auxiliares reutilizáveis
+│   │   ├── date.ts               # Formata datas (ISO, BR), calcula diferenças
+│   │   ├── jwt.ts                # Cria e verifica tokens JWT (usa jsonwebtoken)
+│   │   ├── password.ts           # Hash bcrypt e comparação segura de senhas
+│   │   ├── validator.ts          # Valida CPF, email, telefone, etc
+│   │   └── index.ts              # Exporta todos os utils em um único import
 │   │
-│   ├── cli.ts                    # Interface de linha de comando
-│   ├── index.ts                  # Entry point da API
-│   └── setup.ts                  # Script de setup do banco
+│   ├── cli.ts                    # Interface de linha de comando (npm run cli)
+│   │                             # Comandos: criar usuário, resetar banco, rodar migrations
+│   ├── index.ts                  # Entry point da API (inicia servidor Express)
+│   └── setup.ts                  # Script inicial (cria banco, roda migrations, seeds)
 │
-├── tests/                        # Testes automatizados
-│   ├── integration/              # Testes de integração
-│   │   ├── auth.test.ts
-│   │   ├── pedido.test.ts
-│   │   └── usuario.test.ts
-│   └── unit/                     # Testes unitários
-│       ├── services/
-│       └── utils/
+├── tests/                        # Suíte de testes automatizados (Jest)
+│   ├── integration/              # Testa fluxos completos da API
+│   │   ├── auth.test.ts          # Testa login, logout, proteção de rotas
+│   │   ├── pedido.test.ts        # Testa CRUD completo de pedidos
+│   │   └── usuario.test.ts       # Testa CRUD completo de usuários
+│   └── unit/                     # Testa funções isoladas
+│       ├── services/             # Testa lógica de negócio dos services
+│       └── utils/                # Testa funções auxiliares (hash, JWT, validação)
 │
-├── .env                          # Variáveis de ambiente (não commitado)
-├── .env.example                  # Exemplo de configuração
-├── .gitattributes                # Configuração do Git
-├── .gitignore                    # Arquivos ignorados pelo Git
-├── package.json                  # Dependências do projeto
-├── package-lock.json             # Lock de dependências
-├── README.md                     # Este arquivo
-├── SGAM-final.pdf                # Documentação final do projeto
-└── tsconfig.json                 # Configuração do TypeScript
+├── .env                          # Variáveis secretas (JWT_SECRET, DB_PATH) - ignorado pelo git
+├── .env.example                  # Template de configuração (commitado para referência)
+├── .gitattributes                # Garante line endings consistentes (LF) em todos OS
+├── .gitignore                    # Lista arquivos não versionados (node_modules, .env, *.db)
+├── package.json                  # Dependências npm e scripts (start, dev, test, migrate)
+├── package-lock.json             # Lock exato de versões das dependências
+├── README.md                     # Documentação principal (como instalar, rodar, deploy)
+├── SGAM-final.pdf                # Documentação acadêmica final (apresentação, diagramas)
+└── tsconfig.json                 # Configuração do compilador TypeScript
 ```
 
 ## 🚀 Como rodar
