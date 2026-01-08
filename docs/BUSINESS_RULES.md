@@ -1,1173 +1,587 @@
-## 🧩 PASSO 1: IDENTIFICAR ENTIDADES
+# 📋 REGRAS DE NEGÓCIO - SISTEMA DE PEDIDOS
 
-**Pergunta:** O que preciso guardar no sistema?
+## 🎯 PASSO 1: VISÃO GERAL
 
-- 👤 **USUARIOS** → Pessoas que usam o sistema
-- 📋 **PEDIDOS** → Serviços solicitados
-- 📜 **PEDIDOS_STATUS_LOG** → Histórico de mudanças
+### **O que é o sistema?**
 
----
+Um sistema para gerenciar pedidos de serviços de uma agência de marketing. Clientes solicitam serviços, colaboradores executam, e administradores gerenciam tudo.
 
-## 📋 PASSO 2: DEFINIR ESTRUTURA DAS TABELAS
+### **Quem usa?**
 
-### **📦 Tabela: USUARIOS**
+- **👤 Cliente:** Pessoa que solicita serviços (Logo, Site, Campanha, etc)
+- **👨‍💼 Colaborador:** Profissional que executa os serviços
+- **👔 Administrador:** Gerencia equipe e sistema (também pode executar serviços)
 
-| Campo          | Tipo          | Descrição                    | Exemplo              |
-|----------------|---------------|------------------------------|----------------------|
-| id             | Número        | Identificador único          | 1, 2, 3...           |
-| nome           | Texto (255)   | Nome completo                | "João Silva"         |
-| email          | Texto (255)   | Email único (login)          | "joao@email.com"     |
-| senha          | Texto (255)   | Senha criptografada          | Hash bcrypt          |
-| nivel_acesso   | Opções        | cliente, colaborador, admin  | "cliente"            |
-| ativo          | Sim/Não       | Pode entrar no sistema?      | true                 |
-| ultimo_login   | Data e Hora   | Última vez que entrou        | 2026-01-05 14:30:00  |
-| criado_em      | Data e Hora   | Quando foi cadastrado        | 2026-01-01 10:00:00  |
-| atualizado_em  | Data e Hora   | Última modificação           | 2026-01-07 09:15:00  |
+### **O que o sistema faz?**
 
-**⚙️ Valores aceitos (ENUM no backend):**
-- `nivel_acesso`: "cliente", "colaborador", "admin" (validação obrigatória)
-
-**Regras de negócio importantes:**
-- Email deve ser único (não pode ter dois usuários com mesmo email)
-- Senha sempre criptografada com bcrypt (nunca salvar texto puro)
-- Ao cadastrar: `nivel_acesso = 'cliente'` e `ativo = true` por padrão
-- `atualizado_em` é atualizado automaticamente sempre que o registro muda
-
-### **🔐 Regras de Segurança**
-
-**AO CADASTRAR:**
-1. Email único (verifica se já existe)
-2. Senha criptografada (bcrypt, nunca texto puro)
-3. Valores iniciais automáticos: `nivel_acesso = 'cliente'`, `ativo = true`
-
-**VERIFICAÇÃO DIÁRIA (00:00):**
-```
-⚠️ RECURSO FUTURO - NÃO IMPLEMENTAR NA V1
-
-Para cada usuário:
-  SE nivel_acesso == 'colaborador'
-  E ultimo_login > 30 dias
-  ENTÃO ativo = false
-  
-⚡ Admin e Cliente são IMUNES
-
-💡 Por que deixar para depois?
-• Pode gerar bloqueios indesejados sem política clara
-• Melhor começar com desativação manual pelo admin
-• Implementar quando houver necessidade real
-```
-
-**AO FAZER LOGIN:**
-```
-1. Email existe? ✅
-2. Senha correta? ✅
-3. ativo = false? ❌ Bloquear login com mensagem:
-   "Conta desativada. Contate um Administrador."
-```
-
-**🚫 DELEÇÃO DE USUÁRIOS:**
-```
-❌ NUNCA deletar usuários do banco de dados
-✅ Apenas marcar como ativo = false (soft delete)
-
-Por quê?
-• Preserva integridade dos dados (pedidos, logs)
-• Mantém auditoria completa
-• Permite reativação futura se necessário
-```
+- Cliente cria pedidos
+- Colaboradores assumem e executam pedidos
+- Sistema acompanha o progresso
+- Admin supervisiona tudo
+- Todos veem o histórico completo
 
 ---
 
-### **📦 Tabela: PEDIDOS**
+## 🚦 PASSO 2: FLUXO DO PEDIDO (MACRO)
 
-| Campo          | Tipo          | Descrição                    | Exemplo              |
-|----------------|---------------|------------------------------|----------------------|
-| id             | Número        | Identificador único          | 1, 2, 3...           |
-| cliente_id     | Número        | Quem solicitou (ID usuário)  | 5                    |
-| criado_por     | Número        | Quem criou (ID usuário)      | 12                   |
-| responsavel_id | Número        | Quem está fazendo (ID usuário)| 12                  |
-| titulo         | Texto (255)   | Nome do pedido               | "Logo Nova"          |
-| tipo_servico   | Texto (100)   | Design, Dev, Story, SEO      | "Design"             |
-| descricao      | Texto longo   | Detalhes do pedido           | "Logo minimalista..." |
-| orcamento      | Dinheiro      | Valor até 99.999.999,99      | 5000.00              |
-| prazo_entrega  | Data          | Data limite                  | 2026-01-20           |
-| status         | Opções        | Estado atual do pedido       | "em_andamento"       |
-| prioridade     | Opções        | baixa, media, alta, urgente  | "alta"               |
-| concluido_em   | Data e Hora   | Quando foi finalizado        | 2026-01-20 16:45:00  |
-| criado_em      | Data e Hora   | Quando foi criado            | 2026-01-01 10:00:00  |
-| atualizado_em  | Data e Hora   | Última modificação           | 2026-01-07 09:15:00  |
+### **Estados do Pedido:**
 
-**⚙️ Valores aceitos (ENUM no backend):**
-- `status`: "pendente", "em_andamento", "atrasado", "entregue", "cancelado"
-- `prioridade`: "baixa", "media", "alta", "urgente" (pode ser vazio se status = pendente)
+Um pedido pode estar em 5 estados diferentes:
 
-**🔒 Regra de Integridade Crítica:**
-```
-SE responsavel_id está vazio (NULL)
-ENTÃO status DEVE ser 'pendente'
+| Estado         | Significado                    |
+|----------------|--------------------------------|
+| **PENDENTE**   | Aguardando alguém assumir      |
+| **EM_ANDAMENTO** | Alguém está trabalhando      |
+| **ATRASADO**   | Passou do prazo                |
+| **ENTREGUE**   | Finalizado com sucesso         |
+| **CANCELADO**  | Abortado por algum motivo      |
 
-SE responsavel_id está preenchido
-ENTÃO status NÃO pode ser 'pendente'
-
-💡 Isso evita inconsistências:
-• Pedido com responsável mas status pendente ❌
-• Pedido sem responsável mas status em andamento ❌
-```
-
-**Regras de negócio importantes:**
-- Todos os campos são obrigatórios exceto: `responsavel_id`, `prioridade`, `concluido_em`
-- `atualizado_em` é atualizado automaticamente sempre que o registro muda
-- `concluido_em` só é preenchido quando status vira 'entregue' ou 'cancelado'
-
-### **📝 Regras ao Criar Pedido**
-
-**CLIENTE cria pedido:**
-```
-Formulário pede:
-  • Título, Tipo Serviço, Descrição, Orçamento, Prazo
-
-Sistema preenche automaticamente:
-  • cliente_id = ID do usuário logado
-  • criado_por = ID do usuário logado (mesmo que cliente_id)
-  • responsavel_id = vazio (ninguém assumiu ainda)
-  • status = 'pendente'
-  • prioridade = vazio
-  
-Histórico registra:
-  • "Cliente João criou pedido" (status: pendente)
-```
-
-**COLABORADOR/ADMIN cria pedido:**
-```
-Formulário pede:
-  • Cliente (escolhe da lista), Título, Tipo, Descrição, Orçamento, Prazo, Prioridade
-
-Sistema preenche automaticamente:
-  • cliente_id = cliente escolhido
-  • criado_por = ID do colaborador logado
-  • responsavel_id = ID do colaborador logado (já assume o pedido)
-  • status = 'em_andamento'
-  • prioridade = valor escolhido
-  
-Histórico registra:
-  • "Colaborador Maria criou e assumiu pedido" (status: em_andamento)
-  
-🎯 Uso: Registrar pedidos vindos de fora da plataforma (telefone, email, presencial)
-
-💡 Por que cliente_id ≠ criado_por?
-• cliente_id: de quem é o pedido (dono)
-• criado_por: quem registrou no sistema (pode ser colaborador ajudando cliente)
-```
-
----
-
-### **📦 Tabela: PEDIDOS_STATUS_LOG**
-
-| Campo           | Tipo        | Descrição                    | Exemplo              |
-|-----------------|-------------|------------------------------|----------------------|
-| id              | Número      | Identificador único          | 1, 2, 3...           |
-| pedido_id       | Número      | Qual pedido (ID pedido)      | 42                   |
-| status_anterior | Opções      | Estado antes da mudança      | "pendente"           |
-| status_novo     | Opções      | Estado depois da mudança     | "em_andamento"       |
-| alterado_por    | Número      | Quem mudou (ID usuário)      | 7                    |
-| motivo          | Texto longo | Justificativa da mudança     | "Cliente solicitou cancelamento" |
-| alterado_em     | Data e Hora | Quando mudou                 | 2026-01-02 14:30:00  |
-
-**⚙️ Valores aceitos (ENUM no backend):**
-- `status_anterior` e `status_novo`: "pendente", "em_andamento", "atrasado", "entregue", "cancelado"
-
-### **🎯 Objetivo**
-
-- **Auditoria:** Saber o que aconteceu com cada pedido
-- **Rastreabilidade:** Quem fez cada mudança e quando
-- **Histórico permanente:** Log nunca é apagado
-- **Justificativas:** Guardar motivos de cancelamentos e decisões administrativas
-
-### **📜 Quando Registra**
-
-```
-Criar pedido    → status_anterior = vazio, status_novo = 'pendente' ou 'em_andamento', motivo = vazio
-Assumir         → 'pendente' → 'em_andamento', motivo = vazio
-Atraso (AUTO)   → 'em_andamento' → 'atrasado', alterado_por = vazio, motivo = "Prazo excedido automaticamente"
-Concluir        → 'em_andamento' ou 'atrasado' → 'entregue', motivo = vazio
-Cancelar        → qualquer status → 'cancelado', motivo = obrigatório (usuário preenche)
-
-⚡ alterado_por vazio = foi o SISTEMA (automático)
-⚡ Job de atraso gera log APENAS UMA VEZ na primeira detecção
-⚡ motivo é obrigatório APENAS para cancelamentos
-```
-
----
-
-## 🚦 PASSO 3: DEFINIR FLUXO DE ESTADOS
-
-### **📊 Fluxo de Status**
+### **Fluxo Visual:**
 
 ```
 CRIAÇÃO
    ↓
 PENDENTE ──assumir──► EM_ANDAMENTO ──concluir──► ENTREGUE
    │                       │
-   │                       ├──atraso (auto)──► ATRASADO ──concluir──► ENTREGUE
-   │                       │                       │
-   └───────cancelar────────┴───────cancelar───────┴──► CANCELADO
+   │                       ├──atraso──► ATRASADO ──concluir──► ENTREGUE
+   │                       │                │
+   └───────cancelar────────┴────────cancelar┴──► CANCELADO
 ```
 
-### **📊 Descrição dos Estados**
+### **Regras Básicas:**
 
-| Status           | Descrição                                          | Como chega?                                                   |
-|------------------|----------------------------------------------------|---------------------------------------------------------------|
-| **📝 PENDENTE**  | Aguardando alguém assumir                          | Cliente cria pedido                                           |
-| **🔄 EM_ANDAMENTO** | Alguém assumiu e está trabalhando               | Colab/Admin assume OU Colab/Admin cria (assume automaticamente) |
-| **⏰ ATRASADO**  | Passou do prazo, não foi entregue                  | Sistema verifica: data atual > prazo (automático, 00:00)      |
-| **✅ ENTREGUE**  | Finalizado e entregue                              | Colaborador conclui                                           |
-| **❌ CANCELADO** | Abortado/cancelado                                 | Cliente/Colaborador cancela (de qualquer estado)              |
-
-### **⚠️ Atraso Automático (JOB DIÁRIO 00:00)**
-
-```
-Para cada pedido:
-  SE status == 'em_andamento'
-  E data_atual > prazo_entrega
-  E NÃO existe log com status_novo = 'atrasado' para este pedido
-  ENTÃO
-    • status = 'atrasado'
-    • Registra no histórico (alterado_por = vazio, motivo = "Prazo excedido automaticamente")
-    
-⚡ Log gerado APENAS UMA VEZ na primeira detecção de atraso
-⚡ Não gera log repetido nos dias seguintes se pedido continuar atrasado
-
-🛡️ PROTEÇÃO CRÍTICA:
-Uma vez que o pedido está 'atrasado', o job não deve mais tocá-lo.
-Guard clause: SE status = 'atrasado' → PULAR este pedido (não processar)
-```
+1. **PENDENTE:** Ninguém está trabalhando ainda
+2. **EM_ANDAMENTO:** Alguém assumiu e está fazendo
+3. **ATRASADO:** Sistema detecta que passou do prazo
+4. **ENTREGUE:** Trabalho concluído
+5. **CANCELADO:** Não será feito
 
 ---
 
-## 🔗 PASSO 4: ESTABELECER RELACIONAMENTOS
-
-### **Como as tabelas se conectam:**
-
-```
-USUARIOS ──── PEDIDOS
-   │            ├─ cliente_id: quem solicitou o pedido
-   │            ├─ criado_por: quem registrou no sistema
-   │            ├─ responsavel_id: quem está fazendo o pedido
-   │            
-   └──── PEDIDOS_STATUS_LOG
-                └─ alterado_por: quem mudou o status
-
-PEDIDOS ──── PEDIDOS_STATUS_LOG
-              └─ pedido_id: qual pedido foi modificado
-```
-
-### **🔄 O que acontece quando usuário é desativado?**
-
-**PROBLEMA RESOLVIDO: Responsável Inativo → Pedidos voltam para Pendente**
-
-Quando um colaborador é desativado (`ativo = false`), o sistema automaticamente:
-
-1. **Remove o responsável dos pedidos dele**
-   - `responsavel_id` fica vazio
-
-2. **Muda status para pendente**
-   - Pedidos em andamento ou atrasados voltam para 'pendente'
-
-3. **Registra no histórico**
-   - "Sistema removeu responsável inativo" (alterado_por = vazio)
-
-**Exemplo prático:**
-
-Maria tem 3 pedidos quando é desativada:
-
-**ANTES:**
-| id | titulo      | responsavel_id | status       |
-|----|-------------|----------------|--------------|
-| 15 | Logo Nova   | 7 (Maria)      | em_andamento |
-| 22 | Site Corp   | 7 (Maria)      | em_andamento |
-| 29 | Campanha    | 7 (Maria)      | atrasado     |
-
-**Admin desativa Maria** (`ativo = false`)
-
-**DEPOIS (automático):**
-| id | titulo      | responsavel_id | status    |
-|----|-------------|----------------|-----------|
-| 15 | Logo Nova   | vazio          | pendente  |
-| 22 | Site Corp   | vazio          | pendente  |
-| 29 | Campanha    | vazio          | pendente  |
-
-**Histórico gerado automaticamente:**
-| id | pedido_id | status_anterior | status_novo | alterado_por |
-|----|-----------|-----------------|-------------|--------------|
-| 87 | 15        | em_andamento    | pendente    | vazio (Sistema) |
-| 88 | 22        | em_andamento    | pendente    | vazio (Sistema) |
-| 89 | 29        | atrasado        | pendente    | vazio (Sistema) |
-
----
-
-## 🎯 PASSO 5: CENTRALIZAR MUDANÇAS DE STATUS
-
-### **⚠️ REGRA CRÍTICA: Uma Única Forma de Mudar Status**
-
-**PROBLEMA:** Se o status puder ser mudado em vários lugares do código, é fácil esquecer de registrar no histórico ou aplicar regras.
-
-**SOLUÇÃO:** Criar uma função central que SEMPRE é usada para mudar status.
-
-### **📝 Como funciona na prática:**
-
-**Toda mudança de status passa por este fluxo:**
-
-```
-┌─────────────────────────────────────────────┐
-│  FUNÇÃO: Mudar Status do Pedido             │
-├─────────────────────────────────────────────┤
-│  Entrada:                                   │
-│  • ID do pedido                             │
-│  • Novo status                              │
-│  • ID do usuário (vazio se for sistema)     │
-│  • Motivo (obrigatório se cancelamento)     │
-│                                             │
-│  Executa:                                   │
-│  1. Busca status atual do pedido            │
-│  2. Atualiza status no pedido               │
-│  3. Atualiza concluido_em (se aplicável)    │
-│  4. Registra no histórico (SEMPRE)          │
-│     - status_anterior                       │
-│     - status_novo                           │
-│     - alterado_por                          │
-│     - motivo                                │
-│     - data/hora                             │
-│                                             │
-│  Resultado: Garantia de histórico completo  │
-└─────────────────────────────────────────────┘
-```
-
-**Exemplos de uso:**
-
-```
-1. COLABORADOR ASSUME PEDIDO:
-   Mudar Status (pedido: 42, novo: 'em_andamento', usuário: 7, motivo: vazio)
-   
-2. SISTEMA MARCA ATRASO:
-   Mudar Status (pedido: 42, novo: 'atrasado', usuário: vazio, motivo: "Prazo excedido automaticamente")
-   
-3. RESPONSÁVEL DESATIVADO:
-   Mudar Status (pedido: 42, novo: 'pendente', usuário: vazio, motivo: "Responsável desativado")
-   
-4. COLABORADOR CONCLUI:
-   Mudar Status (pedido: 42, novo: 'entregue', usuário: 7, motivo: vazio)
-   
-5. CLIENTE CANCELA:
-   Mudar Status (pedido: 42, novo: 'cancelado', usuário: 5, motivo: "Mudança de escopo")
-```
-
-**Vantagens:**
-- ✅ Impossível esquecer de registrar histórico
-- ✅ Todas as regras em um único lugar
-- ✅ Fácil de testar e manter
-- ✅ Auditoria 100% confiável
-
----
-
-## 👥 PASSO 6: DEFINIR PERMISSÕES POR NÍVEL
+## 👥 PASSO 3: PAPÉIS E PERMISSÕES (CONCEITUAL)
 
 ### **🔷 CLIENTE**
 
-| Tela                 | O que vê?                                           | O que pode fazer?              |
-|----------------------|-----------------------------------------------------|--------------------------------|
-| **📋 Meus Pedidos**  | Seus pedidos (pendente, em_andamento, atrasado)     | Criar, Cancelar (com justificativa) |
-| **✅ Minhas Entregas** | Seus pedidos (entregue, cancelado)                | Visualizar                     |
-| **👤 Perfil**        | Nome, Email, Senha, Nível (apenas visualiza)        | Editar Nome e Senha            |
+**O que pode fazer:**
+- Criar pedidos
+- Ver seus pedidos
+- Cancelar seus pedidos (com justificativa)
+- Ver histórico dos seus pedidos
 
-**Cancelamento pelo Cliente:**
-```
-Cliente pode cancelar pedidos com status:
-  • pendente
-  • em_andamento
-  • atrasado
-
-Sistema pede:
-  • Motivo do cancelamento (campo obrigatório)
-  
-Sistema registra:
-  • status = 'cancelado'
-  • concluido_em = data/hora atual
-  • Motivo no histórico
-  • Notifica responsável (se houver)
-  
-⚠️ Útil para: Evitar cancelamentos sem razão, métrica de qualidade
-```
+**O que NÃO pode fazer:**
+- Ver pedidos de outros clientes
+- Assumir pedidos
+- Gerenciar usuários
 
 ---
 
 ### **🔷 COLABORADOR**
 
-| Tela                          | O que vê?                                           | O que pode fazer?                   |
-|-------------------------------|-----------------------------------------------------|-------------------------------------|
-| **📊 Dashboard**              | Estatísticas pessoais e avisos                      | Visualizar                          |
-| **📝 Pedidos Pendentes**      | Todos pedidos 'pendente' (sem responsável)          | Assumir, Criar                      |
-| **🔄 Meus Pedidos**           | Pedidos que assumiu (em_andamento, atrasado)        | Concluir, Cancelar (com justificativa), Ver Histórico |
-| **✅ Finalizados**            | Pedidos que entregou/cancelou                       | Visualizar, Ver Histórico           |
-| **👤 Perfil**                 | Nome, Email, Senha, Nível (apenas visualiza)        | Editar Nome e Senha                 |
+**O que pode fazer:**
+- Ver todos os pedidos pendentes
+- Assumir pedidos pendentes
+- Criar pedidos (para clientes que pedem por telefone/email)
+- Concluir pedidos que assumiu
+- Cancelar pedidos que assumiu (com justificativa)
+- Ver histórico dos pedidos que assumiu
 
-**Dashboard Colaborador:**
-
-```
-📈 ESTATÍSTICAS PESSOAIS:
-┌────────────────────────────────────────────────┐
-│ Meus Pedidos por Tipo de Serviço              │
-├────────────────────────────────────────────────┤
-│ Design: 12 pedidos                             │
-│ Desenvolvimento: 8 pedidos                     │
-│ Storytelling: 5 pedidos                        │
-│ SEO: 3 pedidos                                 │
-└────────────────────────────────────────────────┘
-
-┌────────────────────────────────────────────────┐
-│ Meus Pedidos por Status                        │
-├────────────────────────────────────────────────┤
-│ Em Andamento: 5                                │
-│ Atrasados: 2 ⚠️                                │
-│ Entregues: 15                                  │
-└────────────────────────────────────────────────┘
-
-⚠️ PRÓXIMAS ENTREGAS (ordenadas por prioridade):
-┌────┬──────────────┬───────────┬────────────┐
-│ id │ titulo       │ prazo     │ prioridade │
-├────┼──────────────┼───────────┼────────────┤
-│ 42 | Logo Pet Shop│ Amanhã    │ Urgente 🔴 │
-│ 38 | Site Empresa │ 3 dias    │ Alta 🟠    │
-│ 51 | Banner       │ 1 semana  │ Média 🟡   │
-└────┴──────────────┴───────────┴────────────┘
-
-⚠️ MEUS PEDIDOS ATRASADOS:
-┌────┬──────────────┬───────────┬─────────────┐
-│ id │ titulo       │ prazo     │ dias atraso │
-├────┼──────────────┼───────────┼─────────────┤
-│ 29 | Campanha     │ 02/01     │ 5 dias      │
-│ 33 | Identidade   │ 03/01     │ 4 dias      │
-└────┴──────────────┴───────────┴─────────────┘
-```
-
-**Histórico (Colaborador):**
-
-O colaborador vê histórico completo APENAS dos pedidos que ele está envolvido:
-- Pedidos que ele assumiu
-- Pedidos que ele criou (quando cria como colaborador)
-- Pedidos que ele entregou ou cancelou
-
-**Exemplo:** Maria acessa histórico do Pedido #42 que ela assumiu:
-
-| id | status_anterior | status_novo  | alterado_por     | alterado_em         |
-|----|-----------------|--------------|------------------|---------------------|
-| 1  | vazio           | pendente     | João Silva       | 2026-01-01 10:00:00 |
-| 2  | pendente        | em_andamento | Maria Costa      | 2026-01-02 14:30:00 |
-| 3  | em_andamento    | atrasado     | Sistema          | 2026-01-06 00:00:00 |
-| 4  | atrasado        | entregue     | Maria Costa      | 2026-01-10 16:45:00 |
-
-**Cancelamento pelo Colaborador:**
-```
-Colaborador pode cancelar apenas pedidos que assumiu
-
-Sistema pede:
-  • Motivo do cancelamento (campo obrigatório)
-  
-Sistema registra:
-  • status = 'cancelado'
-  • concluido_em = data/hora atual
-  • Motivo no histórico
-  • Notifica cliente
-```
+**O que NÃO pode fazer:**
+- Concluir pedidos de outros colaboradores
+- Gerenciar usuários
+- Ver relatórios globais
 
 ---
 
 ### **🔷 ADMINISTRADOR**
 
-**O admin é colaborador + gerente. Ele trabalha E gerencia a equipe.**
+**O que pode fazer:**
+- Tudo que colaborador faz
+- Ver TODOS os pedidos do sistema
+- Ver histórico de QUALQUER pedido
+- Editar qualquer pedido
+- Gerenciar usuários (ativar/desativar, mudar nível)
+- Ver relatórios e estatísticas globais
+- Cancelar qualquer pedido (com justificativa)
 
-| Tela                          | O que vê?                                                     | O que pode fazer?                   |
-|-------------------------------|---------------------------------------------------------------|-------------------------------------|
-| **📊 Dashboard**              | Visão Pessoal (trabalho dele) + Visão Global (equipe)         | Visualizar                          |
-| **📝 Pedidos Pendentes**      | Todos pedidos 'pendente'                                      | Assumir, Criar                      |
-| **🔄 Meus Pedidos**           | Pedidos que ELE assumiu                                       | Concluir, Cancelar, Ver Histórico   |
-| **✅ Finalizados**            | Pedidos que ELE entregou/cancelou                             | Visualizar, Ver Histórico           |
-| **👥 Gestão de Clientes**     | Lista de clientes                                             | Editar ativo e nivel_acesso         |
-| **👨‍💼 Gestão de Equipe**       | Lista de colaboradores e admins                               | Editar ativo e nivel_acesso         |
-| **📋 Todos os Pedidos**       | Todos os pedidos do sistema (de todos)                        | Visualizar, Editar, Ver Histórico   |
-| **📊 Relatórios**             | Estatísticas e análises do sistema                            | Visualizar                          |
-| **👤 Perfil**                 | Nome, Email, Senha, Nível (apenas visualiza)                  | Editar Nome e Senha                 |
-
-**Dashboard Administrador:**
-
-```
-📈 MINHAS ESTATÍSTICAS (como colaborador):
-┌────────────────────────────────────────────────┐
-│ Meus Pedidos por Tipo de Serviço              │
-├────────────────────────────────────────────────┤
-│ Design: 8 pedidos                              │
-│ Desenvolvimento: 12 pedidos                    │
-└────────────────────────────────────────────────┘
-
-┌────────────────────────────────────────────────┐
-│ Meus Pedidos por Status                        │
-├────────────────────────────────────────────────┤
-│ Em Andamento: 4                                │
-│ Atrasados: 1 ⚠️                                │
-│ Entregues: 18                                  │
-└────────────────────────────────────────────────┘
-
-⚠️ MINHAS PRÓXIMAS ENTREGAS:
-┌────┬──────────────┬───────────┬────────────┐
-│ id │ titulo       │ prazo     │ prioridade │
-├────┼──────────────┼───────────┼────────────┤
-│ 45 | Dashboard    │ 2 dias    │ Alta 🟠    │
-│ 52 | API Rest     │ 1 semana  │ Média 🟡   │
-└────┴──────────────┴───────────┴────────────┘
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-📈 ESTATÍSTICAS GLOBAIS DA EQUIPE:
-┌────────────────────────────────────────────────┐
-│ Visão Geral do Sistema                         │
-├────────────────────────────────────────────────┤
-│ Total de Pedidos: 65                           │
-│ Taxa de Conclusão: 85%                         │
-│ Tempo Médio de Entrega: 7 dias                 │
-│ Pedidos Atrasados: 3 ⚠️                        │
-└────────────────────────────────────────────────┘
-
-👥 PRODUTIVIDADE POR RESPONSÁVEL:
-┌──────────────┬─────────────┬──────────────┐
-│ responsavel  │ em aberto   │ atrasados    │
-├──────────────┼─────────────┼──────────────┤
-│ Carlos (EU)  │ 4           │ 1 ⚠️         │
-│ Maria Silva  │ 5           │ 1 ⚠️         │
-│ João Costa   │ 3           │ 0            │
-└──────────────┴─────────────┴──────────────┘
-
-⚠️ ALERTAS DO SISTEMA:
-• Pedro Santos - 25 dias sem login (em breve será desativado)
-• Carlos Lima - 32 dias sem login (DESATIVADO automaticamente)
-```
-
-### **📋 Tela: Todos os Pedidos (Admin)**
-
-**Diferença crucial:** Admin vê pedidos de TODOS, não só os dele.
-
-**Funcionalidades:**
-- Visualizar todos os pedidos do sistema (pendentes, em andamento, atrasados, entregues, cancelados)
-- Filtrar por status, cliente, responsável, tipo de serviço
-- Editar qualquer campo de qualquer pedido
-- **Ver histórico completo de qualquer pedido (não só os dele)**
-
-**Exemplo:** Admin vê histórico do Pedido #42 que a Maria assumiu:
-
-```
-Pedido #42: Logo Pet Shop
-Cliente: João Silva
-Responsável: Maria Costa
-Status: Entregue
-
-📖 Histórico Completo:
-┌────┬─────────────────┬────────────────┬──────────────────┬─────────────────────┬────────────────────────────┐
-│ id │ status_anterior │ status_novo    │ alterado_por     │ alterado_em         │ motivo                     │
-├────┼─────────────────┼────────────────┼──────────────────┼─────────────────────┼────────────────────────────┤
-│ 1  │ vazio           │ pendente       │ João Silva       │ 2026-01-01 10:00:00 │ -                          │
-│ 2  │ pendente        │ em_andamento   │ Maria Costa      │ 2026-01-02 14:30:00 │ -                          │
-│ 3  │ em_andamento    │ atrasado       │ Sistema          │ 2026-01-06 00:00:00 │ Prazo excedido automaticamente │
-│ 4  │ atrasado        │ entregue       │ Maria Costa      │ 2026-01-10 16:45:00 │ -                          │
-└────┴─────────────────┴────────────────┴──────────────────┴─────────────────────┴────────────────────────────┘
-
-Linha do tempo:
-1. João Silva criou o pedido → status: pendente
-2. Maria Costa assumiu o pedido → status: em_andamento
-3. Sistema detectou atraso automático → status: atrasado (Prazo excedido automaticamente)
-4. Maria Costa concluiu o pedido → status: entregue
-
-💡 Admin vê isso mesmo não sendo o responsável pelo pedido
-```
-
-**Cancelamento pelo Admin:**
-```
-Admin pode cancelar QUALQUER pedido
-
-Sistema pede:
-  • Motivo do cancelamento (campo obrigatório)
-  
-Sistema registra:
-  • status = 'cancelado'
-  • concluido_em = data/hora atual
-  • Motivo no histórico
-  • Notifica cliente e responsável (se houver)
-```
+**Restrições de segurança:**
+- Não pode se auto-desativar
+- Não pode mudar seu próprio nível de acesso
 
 ---
 
-### **📊 Tela: Relatórios (Admin)**
+## 📝 PASSO 4: CASOS DE USO PRINCIPAIS
 
-**Funcionalidades:**
-- Visualizar estatísticas e análises detalhadas
-- Gerar relatórios de desempenho da equipe
-- Identificar gargalos e oportunidades de melhoria
+### **Caso 1: Cliente Cria Pedido**
 
-**Relatórios disponíveis:**
+**Ator:** Cliente  
+**Pré-condição:** Cliente está logado  
+
+**Fluxo:**
+1. Cliente preenche formulário (Título, Tipo, Descrição, Orçamento, Prazo)
+2. Sistema cria pedido com status PENDENTE
+3. Sistema registra histórico: "Cliente criou pedido"
+4. Cliente recebe confirmação
+
+**Resultado:** Pedido criado e aguardando colaborador assumir
+
+---
+
+### **Caso 2: Colaborador Assume Pedido**
+
+**Ator:** Colaborador ou Admin  
+**Pré-condição:** Pedido está PENDENTE  
+
+**Fluxo:**
+1. Colaborador vê lista de pedidos pendentes
+2. Colaborador clica "Assumir"
+3. Sistema muda status para EM_ANDAMENTO
+4. Sistema registra histórico: "Colaborador assumiu pedido"
+5. Cliente recebe notificação
+
+**Resultado:** Colaborador agora é responsável pelo pedido
+
+---
+
+### **Caso 3: Colaborador Conclui Pedido**
+
+**Ator:** Colaborador (responsável) ou Admin  
+**Pré-condição:** Pedido está EM_ANDAMENTO ou ATRASADO  
+
+**Fluxo:**
+1. Colaborador clica "Concluir"
+2. Sistema muda status para ENTREGUE
+3. Sistema registra data de conclusão
+4. Sistema registra histórico: "Colaborador concluiu pedido"
+5. Cliente recebe notificação
+
+**Resultado:** Pedido finalizado
+
+---
+
+### **Caso 4: Cancelar Pedido**
+
+**Atores:** Cliente (seus pedidos), Colaborador (pedidos que assumiu), Admin (qualquer)  
+**Pré-condição:** Pedido NÃO está ENTREGUE ou CANCELADO  
+
+**Fluxo:**
+1. Usuário clica "Cancelar"
+2. Sistema pede motivo (obrigatório, mínimo 10 caracteres)
+3. Usuário preenche motivo
+4. Sistema muda status para CANCELADO
+5. Sistema registra data de conclusão
+6. Sistema registra histórico com motivo
+7. Partes envolvidas recebem notificação
+
+**Resultado:** Pedido cancelado com justificativa registrada
+
+---
+
+### **Caso 5: Sistema Detecta Atraso**
+
+**Ator:** Sistema (automático)  
+**Quando:** Todo dia às 00:00  
+
+**Fluxo:**
+1. Sistema busca pedidos EM_ANDAMENTO
+2. Para cada pedido, verifica se prazo passou
+3. Se passou E ainda não foi marcado como atrasado:
+   - Muda status para ATRASADO
+   - Registra histórico: "Sistema detectou atraso"
+   - Notifica responsável e admin
+
+**Resultado:** Pedidos atrasados ficam visíveis e destacados
+
+---
+
+### **Caso 6: Admin Desativa Colaborador**
+
+**Ator:** Admin  
+**Pré-condição:** Colaborador tem pedidos em aberto  
+
+**Fluxo:**
+1. Admin desativa colaborador
+2. Sistema avisa: "Este usuário tem X pedidos em aberto"
+3. Admin confirma
+4. Sistema remove colaborador dos pedidos
+5. Pedidos voltam para status PENDENTE
+6. Sistema registra histórico: "Sistema removeu responsável inativo"
+7. Pedidos ficam disponíveis para outros assumirem
+
+**Resultado:** Trabalho não fica parado
+
+---
+
+## 📦 PASSO 5: ENTIDADES E DADOS (A partir daqui entramos em estrutura técnica)
+
+Agora que você entende como o sistema funciona, vamos definir o que precisa ser guardado.
+
+### **Entidade 1: USUARIOS**
+
+**O que guarda:** Dados das pessoas que usam o sistema
+
+| Campo          | Tipo          | Descrição                    |
+|----------------|---------------|------------------------------|
+| id             | Número        | Identificador único          |
+| nome           | Texto (255)   | Nome completo                |
+| email          | Texto (255)   | Email único (login)          |
+| senha          | Texto (255)   | Senha criptografada          |
+| nivel_acesso   | Opções        | cliente, colaborador, admin  |
+| ativo          | Sim/Não       | Pode entrar no sistema?      |
+| ultimo_login   | Data e Hora   | Última vez que entrou        |
+| criado_em      | Data e Hora   | Quando foi cadastrado        |
+| atualizado_em  | Data e Hora   | Última modificação           |
+
+**Valores permitidos:**
+- `nivel_acesso`: "cliente", "colaborador", "admin"
+
+---
+
+### **Entidade 2: PEDIDOS**
+
+**O que guarda:** Informações sobre serviços solicitados
+
+| Campo          | Tipo          | Descrição                    |
+|----------------|---------------|------------------------------|
+| id             | Número        | Identificador único          |
+| cliente_id     | Número        | Quem solicitou               |
+| criado_por     | Número        | Quem registrou no sistema    |
+| responsavel_id | Número        | Quem está fazendo            |
+| titulo         | Texto (255)   | Nome do pedido               |
+| tipo_servico   | Texto (100)   | Design, Dev, Story, SEO      |
+| descricao      | Texto longo   | Detalhes do pedido           |
+| orcamento      | Dinheiro      | Valor do serviço             |
+| prazo_entrega  | Data          | Data limite                  |
+| status         | Opções        | Estado atual                 |
+| prioridade     | Opções        | Urgência                     |
+| concluido_em   | Data e Hora   | Quando finalizou             |
+| criado_em      | Data e Hora   | Quando foi criado            |
+| atualizado_em  | Data e Hora   | Última modificação           |
+
+**Valores permitidos:**
+- `status`: "pendente", "em_andamento", "atrasado", "entregue", "cancelado"
+- `prioridade`: "baixa", "media", "alta", "urgente"
+
+**Por que cliente_id ≠ criado_por?**
+- `cliente_id`: De quem é o pedido (dono)
+- `criado_por`: Quem registrou no sistema (pode ser colaborador ajudando)
+- Exemplo: Cliente liga, colaborador registra o pedido dele
+
+---
+
+### **Entidade 3: PEDIDOS_STATUS_LOG**
+
+**O que guarda:** Histórico de todas as mudanças de status
+
+| Campo           | Tipo        | Descrição                    |
+|-----------------|-------------|------------------------------|
+| id              | Número      | Identificador único          |
+| pedido_id       | Número      | Qual pedido                  |
+| status_anterior | Opções      | Estado antes                 |
+| status_novo     | Opções      | Estado depois                |
+| alterado_por    | Número      | Quem mudou (vazio = sistema) |
+| motivo          | Texto longo | Justificativa                |
+| alterado_em     | Data e Hora | Quando mudou                 |
+
+**Para que serve:**
+- **Auditoria:** Saber tudo que aconteceu
+- **Rastreabilidade:** Quem fez e quando
+- **Justificativas:** Por que foi cancelado
+- **Permanente:** Nunca é apagado
+
+---
+
+## 🔒 PASSO 6: REGRAS DE INTEGRIDADE E AUTOMAÇÕES
+
+### **Regra 1: Integridade Status x Responsável**
+
+```
+SE responsavel_id está vazio
+ENTÃO status DEVE ser 'pendente'
+
+SE responsavel_id está preenchido
+ENTÃO status NÃO pode ser 'pendente'
+```
+
+**Por quê?** Evita inconsistências:
+- ❌ Pedido com responsável mas pendente
+- ❌ Pedido sem responsável mas em andamento
+
+---
+
+### **Regra 2: Soft Delete de Usuários**
+
+```
+❌ NUNCA deletar usuários do banco
+✅ Apenas marcar como ativo = false
+```
+
+**Por quê?**
+- Preserva integridade (pedidos, histórico)
+- Permite reativação futura
+- Mantém auditoria completa
+
+---
+
+### **Regra 3: Automação - Atraso**
+
+**Quando:** Todo dia às 00:00  
+**O que faz:**
+
+```
+Para cada pedido:
+  SE status == 'em_andamento'
+  E data_atual > prazo_entrega
+  E NÃO existe log de atraso
+  ENTÃO:
+    • Muda status para 'atrasado'
+    • Registra histórico (alterado_por = vazio)
+    • Motivo: "Prazo excedido automaticamente"
+    • Notifica responsável e admin
+```
+
+**Proteção:** Pedidos já atrasados são ignorados (não processa de novo)
+
+---
+
+### **Regra 4: Automação - Responsável Desativado**
+
+**Quando:** Admin desativa colaborador  
+**O que faz:**
+
+```
+Para cada pedido do colaborador:
+  SE status == 'em_andamento' OU 'atrasado'
+  ENTÃO:
+    • Remove responsavel_id (fica vazio)
+    • Muda status para 'pendente'
+    • Registra histórico (alterado_por = vazio)
+    • Motivo: "Responsável desativado"
+```
+
+**Resultado:** Pedidos voltam para fila de pendentes
+
+---
+
+## 🎯 PASSO 7: IMPLEMENTAÇÃO TÉCNICA
+
+### **Função Central de Mudança de Status**
+
+**Problema:** Se status puder ser mudado em vários lugares, é fácil esquecer de registrar histórico.
+
+**Solução:** UMA função que SEMPRE é usada para mudar status.
+
+**Como funciona:**
+
+```
+Função: mudarStatusPedido
+
+Entrada:
+  • ID do pedido
+  • Novo status
+  • ID do usuário (vazio se sistema)
+  • Motivo (se cancelamento)
+
+Executa:
+  1. Busca status atual
+  2. Atualiza pedido
+  3. Atualiza concluido_em (se aplicável)
+  4. Registra no histórico (SEMPRE)
+  5. Cria notificação
+
+Resultado: Impossível esquecer histórico
+```
+
+**Quem usa:**
+- Controller ao assumir pedido
+- Controller ao concluir pedido
+- Controller ao cancelar pedido
+- Job de atraso
+- Automação de desativação
+
+---
+
+### **Validações**
+
+**Ao criar pedido:**
+- Título: mínimo 5 caracteres
+- Tipo: Design, Dev, Story ou SEO
+- Descrição: mínimo 20 caracteres
+- Orçamento: maior que zero
+- Prazo: data futura
+
+**Ao cadastrar usuário:**
+- Nome: mínimo 3 caracteres
+- Email: formato válido e único
+- Senha: mínimo 8 caracteres
+
+**Ao cancelar:**
+- Motivo: mínimo 10 caracteres
+
+---
+
+### **Notificações**
+
+**Quando notificar:**
+
+| Evento              | Quem recebe           | Mensagem                    |
+|---------------------|-----------------------|-----------------------------|
+| Pedido criado       | Cliente               | "Pedido criado!"            |
+| Pedido assumido     | Cliente               | "Maria assumiu seu pedido"  |
+| Pedido concluído    | Cliente               | "Pedido entregue!"          |
+| Pedido cancelado    | Cliente + Responsável | "Pedido cancelado. Motivo..." |
+| Pedido atrasado     | Responsável + Admin   | "Pedido atrasado"           |
+
+**Onde exibir:**
+- Sino no topo da tela (badge com número)
+- Dropdown com últimas notificações
+- Página "Todas as notificações"
+
+---
+
+## 📊 PASSO 8: UX, DASHBOARDS E RELATÓRIOS
+
+### **Dashboard Cliente**
+
+**Visão:**
+- Meus pedidos em aberto (pendente, andamento, atrasado)
+- Minhas entregas (entregue, cancelado)
+- Botão criar novo pedido
+
+---
+
+### **Dashboard Colaborador**
+
+**Estatísticas Pessoais:**
+- Gráfico: Meus pedidos por tipo de serviço
+- Gráfico: Meus pedidos por status
+- Próximas entregas (ordenadas por prioridade)
+- Meus pedidos atrasados
+
+**Ações:**
+- Ver pedidos pendentes (assumir)
+- Ver meus pedidos (concluir/cancelar)
+- Ver finalizados (histórico)
+
+---
+
+### **Dashboard Admin**
+
+**Estatísticas Pessoais (como colaborador):**
+- Meus pedidos por tipo
+- Meus pedidos por status
+- Minhas próximas entregas
+
+**Estatísticas Globais:**
+- Total de pedidos
+- Taxa de conclusão
+- Tempo médio de entrega
+- Pedidos atrasados (todos)
+- Produtividade por responsável
+- Alertas de inatividade
+
+**Ações Administrativas:**
+- Gestão de clientes (ativar/desativar)
+- Gestão de equipe (ativar/desativar, mudar nível)
+- Ver todos os pedidos
+- Relatórios avançados
+
+---
+
+### **Relatórios (Admin)**
 
 **1. Ranking de Produtividade**
-
-Quem mais conclui pedidos:
-| nome         | pedidos_concluidos |
-|--------------|--------------------|
-| Maria Costa  | 45                 |
-| João Silva   | 32                 |
-| Pedro Santos | 28                 |
+- Quem mais conclui pedidos
 
 **2. Taxa de Cancelamento**
-
-Quem mais cancela pedidos (colaboradores):
-| nome          | pedidos_cancelados | motivos_principais          |
-|---------------|--------------------|-----------------------------|
-| João Silva    | 12                 | Escopo mal definido (5)     |
-| Ana Oliveira  | 8                  | Cliente não respondeu (4)   |
-| Carlos Lima   | 5                  | Falta de recursos (3)       |
-
-💡 Útil para: Identificar problemas recorrentes, treinar equipe
+- Quem mais cancela (motivos principais)
 
 **3. Tempo Médio de Entrega**
-
-Desempenho por pedido concluído:
-| id | titulo        | cliente | responsavel | criacao     | conclusao   | dias_total |
-|----|---------------|---------|-------------|-------------|-------------|------------|
-| 42 | Logo Pet Shop | João    | Maria       | 01/01 10:00 | 10/01 16:45 | 9          |
-| 38 | Site Empresa  | Ana     | Pedro       | 28/12 09:00 | 05/01 18:00 | 8          |
-| 51 | Banner Promo  | Carlos  | João        | 02/01 14:00 | 08/01 10:00 | 6          |
-
-💡 Útil para: Planejar prazos realistas, identificar colaboradores rápidos/lentos
+- Desempenho por pedido concluído
 
 **4. Análise de Atrasos**
+- Pedidos que atrasaram (dias de atraso)
 
-Pedidos que atrasaram:
-| id | titulo     | responsavel | prazo | dias_atraso | concluido? |
-|----|------------|-------------|-------|-------------|------------|
-| 29 | Campanha   | Carlos      | 02/01 | 5           | Não        |
-| 33 | Identidade | Ana         | 03/01 | 4           | Não        |
-| 18 | Logo Nova  | Maria       | 28/12 | 3           | Sim (entregue) |
-
-💡 Útil para: Identificar sobrecarga de colaboradores, prazos irrealistas
-
-**5. Motivos de Cancelamento (Clientes)**
-
-Por que clientes cancelam:
-| motivo                    | quantidade |
-|---------------------------|------------|
-| Mudança de escopo         | 8          |
-| Orçamento insuficiente    | 5          |
-| Prazo muito longo         | 3          |
-| Encontrou outra solução   | 2          |
-
-💡 Útil para: Melhorar processo de orçamento, ajustar prazos
+**5. Motivos de Cancelamento**
+- Por que clientes cancelam
 
 ---
 
-## 🎯 PASSO 7: DEFINIR AÇÕES EM PEDIDOS
+### **Cores e Visual**
 
-### **✅ Assumir Pedido**
+**Status:**
+- 🔵 Pendente: Azul
+- 🟡 Em Andamento: Amarelo
+- 🔴 Atrasado: Vermelho
+- 🟢 Entregue: Verde
+- ⚫ Cancelado: Cinza
 
-```
-Quem pode: Colaborador/Admin
-Status atual: 'pendente'
-Status novo: 'em_andamento'
-
-Sistema atualiza:
-  • status = 'em_andamento'
-  • responsavel_id = ID do colaborador
-  
-Histórico registra:
-  • "Maria Costa assumiu o pedido"
-  • status_anterior = 'pendente'
-  • status_novo = 'em_andamento'
-  • alterado_por = ID do colaborador
-  • motivo = vazio
-```
+**Prioridade:**
+- 🔴 Urgente: Vermelho
+- 🟠 Alta: Laranja
+- 🟡 Média: Amarelo
+- 🟢 Baixa: Verde
 
 ---
 
-### **✅ Concluir Pedido**
-
-```
-Quem pode: Colaborador/Admin (apenas o responsável do pedido)
-Status atual: 'em_andamento' ou 'atrasado'
-Status novo: 'entregue'
-
-Sistema atualiza:
-  • status = 'entregue'
-  • concluido_em = data/hora atual
-  
-Histórico registra:
-  • "Maria Costa concluiu o pedido"
-  • status_anterior = 'em_andamento' ou 'atrasado'
-  • status_novo = 'entregue'
-  • alterado_por = ID do colaborador
-  • motivo = vazio
-
-Sistema notifica:
-  • Cliente recebe notificação: "Seu pedido foi entregue!"
-```
-
----
-
-### **❌ Cancelar Pedido**
-
-**CLIENTE pode cancelar:**
-```
-Status permitidos: 'pendente', 'em_andamento', 'atrasado'
-Status novo: 'cancelado'
-
-Sistema pede:
-  • Motivo do cancelamento (obrigatório, mínimo 10 caracteres)
-  
-Sistema atualiza:
-  • status = 'cancelado'
-  • concluido_em = data/hora atual
-  
-Histórico registra:
-  • "João Silva cancelou o pedido"
-  • Motivo: "Mudança de escopo"
-  • status_anterior = status atual
-  • status_novo = 'cancelado'
-  • alterado_por = ID do cliente
-
-Sistema notifica:
-  • Responsável recebe notificação (se houver)
-```
-
-**COLABORADOR pode cancelar:**
-```
-Apenas pedidos que ele assumiu
-Status permitidos: 'em_andamento', 'atrasado'
-Status novo: 'cancelado'
-
-Sistema pede:
-  • Motivo do cancelamento (obrigatório, mínimo 10 caracteres)
-  
-Sistema atualiza:
-  • status = 'cancelado'
-  • concluido_em = data/hora atual
-  
-Histórico registra:
-  • "Maria Costa cancelou o pedido"
-  • Motivo: "Cliente não respondeu contato"
-  • status_anterior = status atual
-  • status_novo = 'cancelado'
-  • alterado_por = ID do colaborador
-
-Sistema notifica:
-  • Cliente recebe notificação
-```
-
-**ADMIN pode cancelar:**
-```
-Qualquer pedido
-Status permitidos: qualquer (exceto 'entregue' e 'cancelado')
-Status novo: 'cancelado'
-
-Sistema pede:
-  • Motivo do cancelamento (obrigatório, mínimo 10 caracteres)
-  
-Sistema atualiza:
-  • status = 'cancelado'
-  • concluido_em = data/hora atual
-  
-Histórico registra:
-  • "Carlos Admin cancelou o pedido"
-  • Motivo: "Decisão administrativa"
-  • status_anterior = status atual
-  • status_novo = 'cancelado'
-  • alterado_por = ID do admin
-
-Sistema notifica:
-  • Cliente recebe notificação
-  • Responsável recebe notificação (se houver)
-```
-
----
-
-## 🔐 PASSO 8: DEFINIR GESTÃO DE USUÁRIOS
-
-### **👥 Gestão (Admin)**
-
-**Telas:**
-- **Gestão de Clientes:** Lista usuários com `nivel_acesso = 'cliente'`
-- **Gestão de Equipe:** Lista usuários com `nivel_acesso = 'colaborador'` ou `'admin'`
-
-**O que pode editar:**
-- `ativo` (Sim/Não)
-- `nivel_acesso` (cliente, colaborador, admin)
-
-**🚫 O que NUNCA pode editar (campos protegidos):**
-- `cliente_id` (dono do pedido)
-- `criado_por` (quem registrou)
-- `criado_em` (data de criação)
-- Histórico (PEDIDOS_STATUS_LOG)
-
-**✅ O que pode editar em pedidos:**
-- `titulo`, `tipo_servico`, `descricao`
-- `orcamento`, `prazo_entrega`, `prioridade`
-- `responsavel_id` (transferir para outro colaborador)
-- `status` (apenas seguindo regras de transição válidas)
-
-### **🔐 Restrições de Segurança**
-
-```
-1. Admin NÃO pode alterar próprio nivel_acesso
-   → Evita perder acesso admin acidentalmente
-
-2. Admin NÃO pode desativar própria conta
-   → Evita ficar bloqueado do sistema
-
-3. Ao desativar colaborador com pedidos em aberto
-   → Sistema avisa: "Este usuário tem X pedidos em aberto que voltarão para pendente"
-   → Admin decide se continua
-   → Se continuar, pedidos voltam automaticamente para pendente (automação)
-
-4. 🚫 NUNCA permitir deletar usuários
-   → Apenas desativação (ativo = false)
-   → Preserva integridade dos dados históricos
-```
-
----
-
-## 🔔 PASSO 9: SISTEMA DE NOTIFICAÇÕES
-
-### **Quando enviar notificações:**
-
-| Evento                      | Quem recebe                    | Mensagem                                           |
-|-----------------------------|--------------------------------|----------------------------------------------------|
-| **Pedido criado (cliente)** | Cliente                        | "Seu pedido foi criado! Aguarde um colaborador assumir." |
-| **Pedido assumido**         | Cliente                        | "Maria Costa assumiu seu pedido 'Logo Pet Shop'!" |
-| **Pedido concluído**        | Cliente                        | "Seu pedido 'Logo Pet Shop' foi entregue!"        |
-| **Pedido cancelado**        | Cliente + Responsável          | "Pedido 'Logo Pet Shop' foi cancelado. Motivo: [motivo]" |
-| **Pedido atrasado**         | Responsável + Admin            | "Pedido 'Logo Pet Shop' está atrasado (5 dias)"   |
-| **Colaborador desativado**  | Colaborador                    | "Sua conta foi desativada. Seus pedidos foram liberados." |
-
-### **Onde exibir notificações:**
-
-```
-🔔 Sino de Notificações (topo da tela)
-  • Badge com número de notificações não lidas
-  • Dropdown com últimas 10 notificações
-  • Link "Ver todas" → Página de notificações
-```
-
-### **📧 Email (Recurso Futuro - Não implementar na V1):**
-
-```
-⚠️ Deixar para versões futuras
-
-Por quê?
-• Requer configuração de servidor SMTP
-• Pode virar ruído se mal configurado
-• Melhor validar necessidade real com uso
-• Notificações in-app são suficientes para começar
-
-💡 Quando implementar:
-• Admin pode configurar quais eventos enviam email
-• Usuários podem escolher receber ou não
-```
-
----
-
-## 📊 PASSO 10: RESUMO DO FLUXO COMPLETO
-
-### **Jornada do Pedido:**
-
-```
-1. CLIENTE CRIA PEDIDO
-   └─> status = 'pendente'
-   └─> Notifica: "Pedido criado!"
-
-2. COLABORADOR VÊ PEDIDOS PENDENTES
-   └─> Lista todos os pedidos sem responsável
-
-3. COLABORADOR ASSUME PEDIDO
-   └─> status = 'em_andamento'
-   └─> responsavel_id = ID do colaborador
-   └─> Notifica cliente: "Maria assumiu seu pedido!"
-
-4. SISTEMA VERIFICA ATRASO (00:00)
-   SE prazo passou E status = 'em_andamento'
-   └─> status = 'atrasado'
-   └─> Notifica responsável e admin: "Pedido atrasado!"
-
-5. COLABORADOR CONCLUI PEDIDO
-   └─> status = 'entregue'
-   └─> concluido_em = data/hora atual
-   └─> Notifica cliente: "Pedido entregue!"
-
-OU
-
-5. ALGUÉM CANCELA PEDIDO
-   └─> status = 'cancelado'
-   └─> concluido_em = data/hora atual
-   └─> Pede motivo (obrigatório)
-   └─> Notifica cliente e/ou responsável
-```
-
----
-
-## 🎨 PASSO 11: DECISÕES DE DESIGN E UX
-
-### **Cores por Status:**
-
-| Status       | Cor      | Uso                           |
-|--------------|----------|-------------------------------|
-| Pendente     | 🔵 Azul  | Badge, cards, filtros         |
-| Em Andamento | 🟡 Amarelo | Badge, cards, filtros       |
-| Atrasado     | 🔴 Vermelho | Badge, cards, alertas       |
-| Entregue     | 🟢 Verde | Badge, cards, filtros         |
-| Cancelado    | ⚫ Cinza | Badge, cards, filtros         |
-
-### **Prioridades:**
-
-| Prioridade | Ícone | Cor      |
-|------------|-------|----------|
-| Urgente    | 🔴    | Vermelho |
-| Alta       | 🟠    | Laranja  |
-| Média      | 🟡    | Amarelo  |
-| Baixa      | 🟢    | Verde    |
-
-### **Cards de Pedidos:**
-
-```
-┌─────────────────────────────────────────────┐
-│ 🔴 URGENTE                    📝 PENDENTE   │
-│                                             │
-│ Logo Pet Shop                        #42    │
-│ Design • R$ 5.000,00                        │
-│                                             │
-│ 👤 João Silva                               │
-│ 📅 Prazo: Amanhã                            │
-│                                             │
-│ [Assumir Pedido]                            │
-└─────────────────────────────────────────────┘
-```
-
-### **Histórico Visual:**
-
-```
-Pedido #42: Logo Pet Shop
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📖 Histórico de Status
-
-🟢 Entregue
-   Maria Costa • 10/01/2026 16:45
-   "Pedido concluído com sucesso"
-   
-⬆️
-
-🔴 Atrasado
-   Sistema • 06/01/2026 00:00
-   "Prazo de entrega excedido"
-   
-⬆️
-
-🟡 Em Andamento
-   Maria Costa • 02/01/2026 14:30
-   "Assumiu o pedido"
-   
-⬆️
-
-🔵 Pendente
-   João Silva • 01/01/2026 10:00
-   "Pedido criado"
-```
-
----
-
-## ⚙️ PASSO 12: TAREFAS AUTOMÁTICAS DO SISTEMA
-
-### **Job Diário (00:00):**
-
-```
-1. VERIFICAR ATRASOS
-   Para cada pedido com status = 'em_andamento':
-     SE data_atual > prazo_entrega
-     E não existe log de atraso para este pedido
-     ENTÃO:
-       • Mudar status para 'atrasado' (via função central)
-       • Enviar notificação para responsável e admin
-
-   🛡️ PROTEÇÃO: Pedidos já 'atrasados' são ignorados (guard clause)
-```
-
-### **⚠️ Recurso Futuro - Não implementar na V1:**
-
-```
-2. VERIFICAR INATIVIDADE DE COLABORADORES
-   Para cada usuário com nivel_acesso = 'colaborador':
-     SE ultimo_login > 30 dias
-     E ativo = true
-     ENTÃO:
-       • ativo = false
-       • Pedidos dele voltam para 'pendente' (automação)
-       • Enviar notificação para o colaborador
-
-💡 Por que deixar para depois?
-• Pode gerar bloqueios indesejados sem política clara
-• Melhor começar com desativação manual pelo admin
-• Implementar quando houver necessidade real de segurança/contrato
-```
-
----
-
-## 🛡️ PASSO 13: REGRAS DE VALIDAÇÃO
-
-### **Ao criar/editar pedido:**
-
-```
-✅ Título: obrigatório, mínimo 5 caracteres
-✅ Tipo Serviço: obrigatório, uma das opções (Design, Dev, Story, SEO)
-✅ Descrição: obrigatório, mínimo 20 caracteres
-✅ Orçamento: obrigatório, valor > 0
-✅ Prazo: obrigatório, data >= data atual
-✅ Cliente: obrigatório (se colab/admin criar)
-✅ Prioridade: obrigatória (se colab/admin criar)
-```
-
-### **Ao cadastrar usuário:**
-
-```
-✅ Nome: obrigatório, mínimo 3 caracteres
-✅ Email: obrigatório, formato válido, único
-✅ Senha: obrigatório, mínimo 8 caracteres
-✅ Confirmação de senha: deve ser igual à senha
-```
-
-### **Ao cancelar pedido:**
-
-```
-✅ Motivo: obrigatório, mínimo 10 caracteres
-```
-
----
-
-## 📱 PASSO 14: RESPONSIVIDADE
-
-### **O sistema deve funcionar em:**
-
-- 💻 Desktop (1920px+)
-- 💻 Laptop (1366px - 1920px)
-- 📱 Tablet (768px - 1366px)
-- 📱 Mobile (320px - 768px)
-
-### **Adaptações mobile:**
-
-```
-📱 Menu lateral → Menu hamburguer (☰)
-📱 Tabelas → Cards empilhados
-📱 Dashboard → Gráficos simplificados
-📱 Formulários → Campos em coluna única
-```
-
----
-
-## 🎯 CONCLUSÃO: CHECKLIST FINAL
-
-### **Funcionalidades Essenciais:**
-
-- ✅ Cadastro e login de usuários
-- ✅ 3 níveis de acesso (cliente, colaborador, admin)
-- ✅ CRUD de pedidos
-- ✅ Sistema de status (5 estados)
-- ✅ Histórico completo (log de mudanças com motivos)
-- ✅ Dashboard personalizado por nível
+## ✅ PASSO 9: CHECKLIST FINAL
+
+### **Funcionalidades V1:**
+
+**Essenciais:**
+- ✅ Cadastro e login
+- ✅ 3 níveis de acesso
+- ✅ Criar, assumir, concluir, cancelar pedidos
+- ✅ 5 estados de pedido
+- ✅ Histórico completo com motivos
+- ✅ Dashboard por nível
 - ✅ Gestão de usuários (admin)
 - ✅ Relatórios (admin)
 - ✅ Notificações in-app
-- ✅ Verificação automática de atrasos
-- ✅ Pedidos voltam para pendente quando responsável é desativado
-- ✅ Campo `concluido_em` para relatórios precisos
-- ✅ Campo `criado_por` para rastreabilidade
-- ✅ Campo `motivo` no log para justificativas
+- ✅ Atraso automático
+- ✅ Desativação com redistribuição
 
-### **Segurança:**
-
+**Segurança:**
 - ✅ Senhas criptografadas
-- ✅ Soft delete (nunca deletar usuários)
+- ✅ Soft delete
 - ✅ Validação de permissões
 - ✅ Histórico imutável
-- ✅ Admin não pode se auto-desativar
-- ✅ Admin não pode editar campos protegidos (cliente_id, criado_por, criado_em, histórico)
-- ✅ Regra forte: responsavel_id NULL = status pendente obrigatório
+- ✅ Proteções admin
 
-### **Experiência do Usuário:**
-
-- ✅ Interface intuitiva
-- ✅ Feedback visual (cores, badges)
-- ✅ Notificações em tempo real
-- ✅ Histórico visual com motivos
-- ✅ Responsivo (mobile, tablet, desktop)
-- ✅ Centralização de mudança de status (uma função única)
+---
 
 ### **Recursos Futuros (V2):**
 
 - ⏳ Notificações por email
-- ⏳ Desativação automática por inatividade de 30 dias
+- ⏳ Desativação automática por inatividade (30 dias)
+- ⏳ Upload de arquivos (anexos)
+- ⏳ Comentários em pedidos
+- ⏳ Tags customizáveis
 
 ---
 
-## 📝 NOTAS FINAIS PARA IMPLEMENTAÇÃO
+## 🎓 ROADMAP DE IMPLEMENTAÇÃO
 
-### **Ordem recomendada de desenvolvimento:**
+**Fase 1: Base**
+1. Backend: Tabelas e migrations
+2. Backend: Função central de status
+3. Backend: Autenticação e permissões
 
-```
-1. Backend básico
-   └─> Tabelas, models, migrations
-   └─> Função central de mudança de status
-   └─> Validações ENUM
+**Fase 2: Core**
+4. CRUD de pedidos
+5. Histórico automático
+6. Dashboard básico
 
-2. Autenticação e autorização
-   └─> Login, registro
-   └─> Middlewares de permissão por nível
+**Fase 3: Automações**
+7. Job de atraso
+8. Desativação com redistribuição
+9. Notificações in-app
 
-3. CRUD de pedidos
-   └─> Criar, assumir, concluir, cancelar
-   └─> Log automático em cada ação
+**Fase 4: Admin**
+10. Gestão de usuários
+11. Relatórios
+12. Estatísticas globais
 
-4. Dashboard e relatórios
-   └─> Estatísticas por nível
-   └─> Gráficos e tabelas
-
-5. Notificações in-app
-   └─> Sistema de notificações
-   └─> Badge com contador
-
-6. Job de atraso
-   └─> Task agendada diária
-   └─> Guard clause para não processar atrasados
-
-7. Gestão de usuários (admin)
-   └─> Edição de ativo e nivel_acesso
-   └─> Validações de segurança
-
-8. Refinamentos de UX
-   └─> Responsividade
-   └─> Loading states
-   └─> Mensagens de erro/sucesso
-```
-
-## 🎯 TECNOLOGIAS ESCOLHIDAS
-
-### **Backend:**
-- **Node.js + Express** → Servidor web
-- **TypeScript** → JavaScript com tipos
-- **MySQL** → Banco de dados
-- **Knex.js** → Query builder e migrations
-- **bcrypt** → Criptografia de senhas
-- **node-cron** → Agendamento de tarefas
-- **jsonwebtoken** → Autenticação via tokens
-
-### **Frontend:**
-- **HTML5** → Estrutura
-- **CSS3** → Estilização
-- **JavaScript** → Interatividade
+**Fase 5: Polimento**
+13. Responsividade
+14. Validações completas
+15. Testes e ajustes
