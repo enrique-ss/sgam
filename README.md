@@ -18,7 +18,6 @@ npm run dev
 **Interfaces disponíveis:**
 - 🌐 **Web:** `npm run web` (abre no navegador)
 - 💻 **CLI:** `npm run cli` (linha de comando)
-- 🔌 **API:** `http://localhost:3000/api`
 
 ## 🛠️ Tech Stack
 
