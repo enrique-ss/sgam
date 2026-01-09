@@ -9,11 +9,12 @@ Sistema desenvolvido no programa **RSTI Backend** para gerenciar pedidos de serv
 ## 🚀 Quick Start
 
 ```bash
-git clone https://github.com/seu-usuario/sgam.git
-cd sgamInstale dependências
-npm installConfigure o banco (crie .env baseado no .env.example)
-npm run setupInicie o servidor
-npm run dev
+1. git clone https://github.com/seu-usuario/sgam.git (Clona o SGAM para o seu computador)
+2. cd sgam (Entra dentro da pasta do SGAM)
+3. npm i (Instala as dependências)
+4. (crie .env baseado no .env.example)
+5. npm run setup (Criar o banco de dados e as tabelas)
+6. npm run dev (Inicia o servidor)
 ```
 **Interfaces disponíveis:**
 - 🌐 **Web:** `npm run web` (abre no navegador)
