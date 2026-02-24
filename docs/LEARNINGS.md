@@ -1,142 +1,63 @@
-# 📚 Aprendizados - SGAM
+# Aprendizados
 
-> Lições aprendidas durante o desenvolvimento do Sistema de Gerenciamento de Agência de Marketing
-
-## 💡 O Momento de Virada
-
-### **O Problema Inicial**
-
-Comecei o projeto criando três interfaces diferentes (Backend API, CLI e Web) sem planejamento prévio. Cada interface tinha suas próprias regras e comportamentos, resultando em:
-
-- **Inconsistências:** Backend validava de um jeito, CLI de outro, frontend de outro
-- **Perda de tempo:** Precisava abrir 3 códigos diferentes para lembrar as regras
-- **Bugs frequentes:** Backend aceitava dados que o frontend bloqueava
-- **Confusão:** Eu mesmo não sabia mais qual era o comportamento "correto" 😅
-
-### **A Solução**
-
-**Parei de codificar e comecei a documentar.**
-
-Criei uma modelagem de dados completa que serve como **fonte única da verdade** para todas as interfaces. Foi a melhor decisão do projeto!
-
-**Resultado:**
-- ✅ Todas as interfaces seguem as mesmas regras
-- ✅ Código mais organizado e consistente
-- ✅ Qualquer pessoa consegue entender o sistema lendo a documentação
-- ✅ Mudanças são planejadas na documentação primeiro, depois implementadas
+Lições aprendidas durante o desenvolvimento do SGAM.
 
 ---
 
-## 🎓 Lições Técnicas
+## O momento de virada
 
-### **1. Modelagem de Dados**
-- Documentar ANTES de codificar evita retrabalho brutal
-- Uma boa modelagem é a diferença entre "funciona" e "funciona bem"
-- Regras de negócio devem estar escritas, não só na cabeça
+Comecei o projeto criando três interfaces diferentes (Backend API, CLI e Web) sem planejamento prévio. Cada uma tinha suas próprias regras, o que gerou inconsistências entre as camadas, perda de tempo abrindo três códigos para lembrar o comportamento correto e bugs onde o backend aceitava dados que o frontend bloqueava.
 
-### **2. Banco de Dados**
-- Foreign Keys garantem integridade referencial
-- Soft delete (ativo=false) é melhor que DELETE físico para auditoria
-- Triggers automatizam regras complexas que seriam esquecidas no código
-- ENUM vs Tabelas de Domínio: simplicidade vs flexibilidade
-
-### **3. Arquitetura**
-- Separação em camadas (Controllers → Services → Models) facilita manutenção
-- DTOs evitam dados inválidos entrarem no sistema
-- Exceptions customizadas tornam erros mais claros
-- Barrel exports (`index.ts`) deixam imports limpos
-
-### **4. Fluxos de Estado**
-- Documentar transições de status evita bugs de lógica
-- Máquinas de estado bem definidas facilitam validações
-- Automações (jobs, triggers) devem ser documentadas explicitamente
-
-### **5. Permissões (RBAC)**
-- Definir permissões por papel (Cliente/Colaborador/Admin) desde o início
-- Documentar o que cada nível pode ver e fazer
-- Validar permissões no backend, não confiar no frontend
+A solução foi parar de codificar e começar a documentar. Criar uma modelagem completa como fonte única da verdade foi a melhor decisão do projeto. A partir disso, todas as interfaces passaram a seguir as mesmas regras e qualquer mudança era planejada na documentação antes de ser implementada.
 
 ---
 
-## 🏗️ Lições de Arquitetura
+## Lições técnicas
 
-### **Organização de Código**
-- Cada arquivo deve ter uma responsabilidade única
-- Estrutura de pastas autoexplicativa evita confusão
-- `src/config`, `src/controllers`, `src/services` → cada camada tem seu lugar
-- Não misturar regras de negócio com rotas HTTP
+**Modelagem de dados:** documentar antes de codificar evita retrabalho. Regras de negócio devem estar escritas, não só na cabeça.
 
-### **Single Source of Truth (SSOT)**
-- Mudanças críticas (ex: status de pedidos) devem passar por **uma função central**
-- Se você pode esquecer de registrar histórico, sua arquitetura falhou
-- Services centralizam lógica, Controllers apenas coordenam
+**Banco de dados:** foreign keys garantem integridade referencial. Soft delete é melhor que DELETE físico para auditoria. Enums oferecem validação nativa mas dificultam mudanças futuras.
 
-### **Escolha de Tecnologias**
-- **Knex vs ORMs:** Query builder dá mais controle, ORMs abstraem demais
-- **TypeScript:** Previne bugs em tempo de desenvolvimento, não em produção
-- **ENUM no banco:** Validação nativa, mas dificulta mudanças futuras
-- Escolha pela necessidade real, não pelo hype
+**Arquitetura:** separação em camadas facilita manutenção. DTOs evitam dados inválidos. Barrel exports deixam imports limpos.
 
-### **Decisões de Design**
-- **Recursos Futuros:** Marcar claramente o que é V1 e o que fica pra depois
-- Exemplo: Email e inatividade automática → V2 (evita complexidade prematura)
-- MVP funcional > Sistema completo que nunca termina
+**Fluxos de estado:** documentar transições de status evita bugs de lógica. Automações como jobs e triggers devem ser documentadas explicitamente.
 
-### **Guard Clauses e Proteções**
-- Validar estado antes de processar (ex: não processar pedidos já atrasados)
-- Prevenir inconsistências com regras fortes (responsavel_id NULL = status pendente)
-- Proteções no código evitam dados corrompidos
+**Permissões:** definir o que cada nível pode ver e fazer desde o início. Validar permissões no backend, nunca confiar só no frontend.
 
 ---
 
-## 🔧 Lições de Processo
+## Lições de arquitetura
 
-### **Trabalho em Equipe**
-- Git e GitHub são essenciais: branches, pull requests, code review
-- Resolver conflitos de merge faz parte do processo
-- Comunicação clara evita retrabalho
+**Organização:** cada arquivo deve ter uma responsabilidade única. Estrutura de pastas autoexplicativa evita confusão. Regras de negócio não devem se misturar com rotas HTTP.
 
-### **Documentação**
-- README deve ser curto e objetivo (< 5 min de leitura)
-- Documentação técnica detalhada vai em `/docs`
-- Código limpo começa com planejamento limpo
+**Single Source of Truth:** mudanças críticas como alteração de status devem passar por uma função central. Se é possível esquecer de registrar o histórico, a arquitetura falhou. Services centralizam lógica, controllers apenas coordenam.
 
-### **Desenvolvimento**
-- TypeScript força você a pensar antes de escrever
-- Testes automatizados dão confiança para refatorar
-- Convenções de nomenclatura importam (muito!)
-- **Planejar arquitetura antes de codificar economiza semanas de refatoração**
+**Escolha de tecnologias:** Knex dá mais controle que ORMs. TypeScript previne bugs em tempo de desenvolvimento. Escolher pela necessidade real, não pelo hype.
+
+**Escopo:** marcar claramente o que é V1 e o que fica para depois evita complexidade prematura. MVP funcional vale mais que sistema completo que nunca termina.
+
+**Guard clauses:** validar estado antes de processar. Regras fortes no código evitam dados corrompidos.
 
 ---
 
-## 🐛 Erros Que Cometi (e como corrigi)
+## Lições de processo
 
-### **1. Trigger vs Regra de Negócio Duplicada**
-**Erro:** Status mudava em 3 lugares diferentes (app, trigger, job)  
-**Consequência:** Esquecia de registrar log em alguns casos  
-**Correção:** Criar função central que TODA mudança de status passa  
-**Lição:** Uma fonte de verdade previne inconsistências
+**Trabalho em equipe:** Git e GitHub são essenciais. Resolver conflitos de merge faz parte do processo. Comunicação clara evita retrabalho.
 
-### **2. Foreign Key Inútil**
-**Erro:** `responsavel_id ON DELETE SET NULL` nunca disparava  
-**Por quê?** Usuários são soft deleted (ativo=false), nunca deletados fisicamente  
-**Correção:** Trigger que reage à desativação, não à deleção  
-**Lição:** Entender como o sistema funciona de verdade, não só teoria
+**Documentação:** README deve ser curto e objetivo. Documentação técnica detalhada vai em `/docs`. Código limpo começa com planejamento limpo.
 
-### **3. Campos Redundantes Sem Uso**
-**Erro:** `cancelado_por` e `concluido_por` no pedido + `alterado_por` no log  
-**Problema:** Duplicação sem benefício claro  
-**Correção:** Se for só para queries rápidas, documentar o motivo  
-**Lição:** Toda duplicação precisa justificativa
+**Desenvolvimento:** TypeScript força pensar antes de escrever. Convenções de nomenclatura importam. Planejar arquitetura antes de codificar economiza semanas de refatoração.
 
-### **4. Falta de Contexto em Decisões**
-**Erro:** Cliente pode cancelar pedido sem justificativa  
-**Problema:** Não estava claro se precisa notificar responsável, se impacta métricas  
-**Correção:** Documentar impacto e fluxo completo da ação  
-**Lição:** Regra de negócio incompleta gera código incompleto
+---
 
-### **5. Status "Atrasado" Sem Proteção**
-**Erro:** Job processava pedido atrasado todos os dias  
-**Problema:** Gerava logs duplicados  
-**Correção:** Guard clause: se já está atrasado, pular  
-**Lição:** Proteger contra múltiplas execuções
+## Erros que cometi e como corrigi
+
+**Status mudando em três lugares:** o status era alterado no app, no trigger e no job separadamente, o que fazia o log ser esquecido em alguns casos. A correção foi criar uma função central que toda mudança de status obrigatoriamente passa. Lição: uma fonte de verdade previne inconsistências.
+
+**Foreign key inútil:** `responsavel_id ON DELETE SET NULL` nunca disparava porque usuários são soft deleted, nunca deletados fisicamente. A correção foi usar um trigger que reage à desativação. Lição: entender como o sistema funciona de verdade, não só na teoria.
+
+**Campos redundantes:** `cancelado_por` e `concluido_por` no pedido existiam junto com `alterado_por` no log, criando duplicação sem benefício claro. Lição: toda duplicação precisa de justificativa.
+
+**Regra de negócio incompleta:** o cancelamento sem justificativa obrigatória deixava sem resposta o que notificar, quem avisar e como isso impactava as métricas. Documentar o fluxo completo da ação resolveu. Lição: regra incompleta gera código incompleto.
+
+**Job sem proteção:** o job de atraso processava o mesmo pedido todos os dias, gerando logs duplicados. A correção foi uma guard clause que pula pedidos já marcados como atrasados. Lição: proteger contra múltiplas execuções.
