@@ -1,6 +1,6 @@
 # Arquitetura do SGAM
 
-## Estrutura atual do projeto
+## Estrutura do projeto
 
 ```
 SGAM/
